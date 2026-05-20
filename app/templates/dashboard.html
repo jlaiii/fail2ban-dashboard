@@ -184,12 +184,20 @@
 
         /* Timeline */
         .timeline-container { position: relative; }
+        .timeline-range-bar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+        .timeline-range-btn { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-muted); padding: 5px 14px; border-radius: 7px; cursor: pointer; font-size: 0.78em; font-weight: 600; font-family: inherit; transition: all 0.15s; }
+        .timeline-range-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-light); }
+        .timeline-range-btn.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+        .timeline-range-label { font-size: 0.72em; color: var(--text-muted); margin-left: auto; }
+        .timeline-chart { position: relative; }
         .timeline-bar { display: flex; align-items: end; gap: 2px; height: 150px; padding-top: 10px; }
         .timeline-bar .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; position: relative; }
         .timeline-bar .bar { width: 100%; max-width: 32px; background: linear-gradient(180deg, var(--accent-blue) 0%, #1f6feb 100%); border-radius: 4px 4px 0 0; min-height: 2px; transition: height 0.4s, opacity 0.2s; opacity: 0.85; }
         .timeline-bar .bar-group:hover .bar { opacity: 1; }
         .timeline-bar .bar-label { font-size: 0.55em; color: var(--text-muted); transform: rotate(-45deg); white-space: nowrap; margin-top: 6px; transform-origin: top left; }
         .timeline-bar .bar-group:hover .bar-label { color: var(--text-secondary); }
+        .timeline-bar .bar-val { font-size: 0.58em; color: var(--text-muted); min-height: 14px; }
+        .timeline-bar .bar-group:hover .bar-val { color: var(--text-secondary); }
 
         /* Tags */
         .tag { display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 0.72em; font-weight: 600; }
@@ -456,24 +464,21 @@
     <div class="section-title">
         <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         Attack Timeline
-        <span class="count-badge">by hour</span>
+        <span class="count-badge" id="timelineRangeLabel">1D</span>
     </div>
     <div class="section-body">
-        {% if auth_data.timeline %}
-        {% set max_val = auth_data.timeline.values()|max %}
-        <div class="timeline-container">
-            <div class="timeline-bar">
-                {% for hour, count in auth_data.timeline.items() %}
-                <div class="bar-group" title="{{ hour }}: {{ count }} attacks">
-                    <div class="bar" style="height: {{ (count / max_val * 130)|int }}px;"></div>
-                    <div class="bar-label">{{ hour[-5:] }}</div>
-                </div>
-                {% endfor %}
-            </div>
+        <div class="timeline-range-bar">
+            <button class="timeline-range-btn active" data-range="1d" onclick="setTimelineRange('1d',this)">1D</button>
+            <button class="timeline-range-btn" data-range="3d" onclick="setTimelineRange('3d',this)">3D</button>
+            <button class="timeline-range-btn" data-range="7d" onclick="setTimelineRange('7d',this)">7D</button>
+            <button class="timeline-range-btn" data-range="30d" onclick="setTimelineRange('30d',this)">30D</button>
+            <button class="timeline-range-btn" data-range="90d" onclick="setTimelineRange('90d',this)">90D</button>
+            <button class="timeline-range-btn" data-range="1y" onclick="setTimelineRange('1y',this)">1Y</button>
+            <span class="timeline-range-label" id="timelineInfo"></span>
         </div>
-        {% else %}
-        <div class="empty-state">No timeline data available</div>
-        {% endif %}
+        <div class="timeline-chart" id="timelineChart">
+            <div class="timeline-bar" id="timelineBar"></div>
+        </div>
     </div>
 </div>
 
@@ -747,6 +752,12 @@ function updateDashboard(d) {
     applyFilter();
     loadCountryFlags();
     updateCountdowns();
+
+    // Re-bucket timeline with fresh attack data
+    var attacks = (d.enriched || {}).enriched_attacks || [];
+    cachedAttacks = attacks;
+    var buckets = bucketAttacks(cachedAttacks, currentTimelineRange);
+    renderTimeline(buckets);
 }
 
 function updateDataAge() {
@@ -880,6 +891,140 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 
 // Initial flag load
 loadCountryFlags();
+
+// ==================== TIMELINE RANGE SELECTOR ====================
+var currentTimelineRange = '1d';
+var cachedAttacks = [];
+
+var RANGE_CONFIG = {
+    '1d':  { ms: 86400000,       bucketMs: 3600000,   labelFmt: function(d){ var h=d.getHours(); return (h<10?'0':'')+h+':00'; },     rangeLabel: '1D', maxBars: 24  },
+    '3d':  { ms: 259200000,      bucketMs: 21600000,  labelFmt: function(d){ var m=d.getMonth()+1,day=d.getDate(),h=d.getHours(); return (m<10?'0':'')+m+'/'+(day<10?'0':'')+day+' '+((h<6?'0':'')+(h-(h%6)))+':00'; }, rangeLabel: '3D', maxBars: 12 },
+    '7d':  { ms: 604800000,      bucketMs: 21600000,  labelFmt: function(d){ var m=d.getMonth()+1,day=d.getDate(),h=d.getHours(); return (m<10?'0':'')+m+'/'+(day<10?'0':'')+day+' '+((h<6?'0':'')+(h-(h%6)))+':00'; }, rangeLabel: '7D', maxBars: 28  },
+    '30d': { ms: 2592000000,     bucketMs: 86400000,   labelFmt: function(d){ var m=d.getMonth()+1,day=d.getDate(); return (m<10?'0':'')+m+'/'+(day<10?'0':'')+day; },  rangeLabel: '30D', maxBars: 30 },
+    '90d': { ms: 7776000000,     bucketMs: 604800000,  labelFmt: function(d){ var m=d.getMonth()+1,day=d.getDate(); return (m<10?'0':'')+m+'/'+(day<10?'0':'')+day; },  rangeLabel: '90D', maxBars: 13 },
+    '1y':  { ms: 31536000000,    bucketMs: 604800000,  labelFmt: function(d){ var m=d.getMonth()+1,day=d.getDate(); return (m<10?'0':'')+m+'/'+(day<10?'0':'')+day; },  rangeLabel: '1Y', maxBars: 52 },
+};
+
+function bucketAttacks(attacks, rangeKey) {
+    var cfg = RANGE_CONFIG[rangeKey];
+    if (!cfg || !attacks || attacks.length === 0) return [];
+
+    var nowMs = Date.now();
+    var cutoffMs = nowMs - cfg.ms;
+    var bucketMs = cfg.bucketMs;
+
+    // Filter attacks within range
+    var filtered = [];
+    for (var i = 0; i < attacks.length; i++) {
+        var ts = new Date(attacks[i].timestamp_iso || attacks[i].time).getTime();
+        if (ts >= cutoffMs && ts <= nowMs) {
+            filtered.push({ ts: ts, attack: attacks[i] });
+        }
+    }
+
+    if (filtered.length === 0) return [];
+
+    // Determine start and end bucket boundaries
+    var startBucket = Math.floor(filtered[0].ts / bucketMs) * bucketMs;
+    var endBucket = Math.floor(nowMs / bucketMs) * bucketMs;
+
+    // Build buckets
+    var buckets = {};
+    var keys = [];
+    for (var b = startBucket; b <= endBucket; b += bucketMs) {
+        var key = b;
+        buckets[key] = 0;
+        keys.push(key);
+    }
+
+    // Count attacks per bucket
+    for (var i = 0; i < filtered.length; i++) {
+        var bk = Math.floor(filtered[i].ts / bucketMs) * bucketMs;
+        if (buckets[bk] !== undefined) {
+            buckets[bk]++;
+        }
+    }
+
+    // Build result array
+    var result = [];
+    for (var i = 0; i < keys.length; i++) {
+        var bk = keys[i];
+        var dt = new Date(bk);
+        result.push({
+            key: bk,
+            label: cfg.labelFmt(dt),
+            count: buckets[bk],
+            isoLabel: dt.toISOString()
+        });
+    }
+
+    // Truncate to maxBars from the right (most recent)
+    if (result.length > cfg.maxBars) {
+        result = result.slice(result.length - cfg.maxBars);
+    }
+
+    return result;
+}
+
+function renderTimeline(buckets) {
+    var bar = document.getElementById('timelineBar');
+    var info = document.getElementById('timelineInfo');
+
+    if (!buckets || buckets.length === 0) {
+        bar.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:30px 0;width:100%;font-size:0.85em;">No attack data in this time range</div>';
+        if (info) info.textContent = '';
+        return;
+    }
+
+    var maxVal = 1;
+    for (var i = 0; i < buckets.length; i++) {
+        if (buckets[i].count > maxVal) maxVal = buckets[i].count;
+    }
+
+    var totalAttacks = 0;
+    for (var i = 0; i < buckets.length; i++) totalAttacks += buckets[i].count;
+
+    if (info) info.textContent = totalAttacks + ' attacks in range';
+
+    var html = '';
+    for (var i = 0; i < buckets.length; i++) {
+        var b = buckets[i];
+        var h = Math.max(2, Math.round(b.count / maxVal * 130));
+        html += '<div class="bar-group" title="' + esc(b.isoLabel) + '\n' + b.count + ' attacks">';
+        html += '<div class="bar-val">' + (b.count > 0 ? b.count : '') + '</div>';
+        html += '<div class="bar" style="height:' + h + 'px;"></div>';
+        html += '<div class="bar-label">' + esc(b.label) + '</div>';
+        html += '</div>';
+    }
+    bar.innerHTML = html;
+}
+
+function setTimelineRange(rangeKey, btn) {
+    currentTimelineRange = rangeKey;
+
+    // Update active button
+    var btns = document.querySelectorAll('.timeline-range-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+    if (btn) btn.classList.add('active');
+
+    // Update label
+    var cfg = RANGE_CONFIG[rangeKey];
+    var label = document.getElementById('timelineRangeLabel');
+    if (label && cfg) label.textContent = cfg.rangeLabel;
+
+    // Re-bucket and render
+    var buckets = bucketAttacks(cachedAttacks, rangeKey);
+    renderTimeline(buckets);
+}
+
+// Initialize timeline with attacks from template data
+function initTimeline(attacks) {
+    cachedAttacks = attacks || [];
+    setTimelineRange(currentTimelineRange, document.querySelector('.timeline-range-btn.active'));
+}
+
+// Boot timeline from server-rendered attack data
+initTimeline({{ enriched.enriched_attacks | tojson | safe }});
 </script>
 
 <div class="footer">
