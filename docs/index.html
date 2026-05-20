@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fail2Ban Dashboard -- Demo</title>
+    <style>
+        :root, [data-theme="dark"] {
+            --bg-primary: #0a0e14; --bg-secondary: #111620; --bg-card: #151b27;
+            --bg-elevated: #1a2233; --bg-hover: #1e2740; --border: #1e2a3a;
+            --border-light: #253045; --text-primary: #e6edf3; --text-secondary: #8b9ab5;
+            --text-muted: #5a6a85; --accent-blue: #4da6ff; --accent-blue-dim: #1a3a5c;
+            --accent-red: #f85149; --accent-red-dim: #3d1a1a; --accent-yellow: #e3b341;
+            --accent-yellow-dim: #3d3018; --accent-green: #3fb950; --accent-green-dim: #1a3d24;
+            --accent-purple: #a78bfa; --accent-purple-dim: #2a1f4e;
+            --accent-orange: #f0883e; --accent-orange-dim: #3d2510;
+            --glow-red: 0 0 20px rgba(248,81,73,0.15); --glow-blue: 0 0 20px rgba(77,166,255,0.1);
+            --bg-gradient: radial-gradient(ellipse at 50% 0%, rgba(77,166,255,0.03) 0%, transparent 60%);
+            --overlay-bg: rgba(5,8,12,0.85); --input-bg: #0d1117;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f6f8fa; --bg-secondary: #ffffff; --bg-card: #ffffff;
+            --bg-elevated: #f3f4f6; --bg-hover: #eef0f3; --border: #d8dee4;
+            --border-light: #c8cdd3; --text-primary: #1f2328; --text-secondary: #656d76;
+            --text-muted: #8b949e; --accent-blue: #0969da; --accent-blue-dim: #ddf4ff;
+            --accent-red: #cf222e; --accent-red-dim: #ffebe9; --accent-yellow: #9a6700;
+            --accent-yellow-dim: #fff8c5; --accent-green: #1a7f37; --accent-green-dim: #dafbe1;
+            --accent-purple: #8250df; --accent-purple-dim: #fbefff; --accent-orange: #bc4c00;
+            --accent-orange-dim: #fff1e5;
+            --bg-gradient: radial-gradient(ellipse at 50% 0%, rgba(9,105,218,0.04) 0%, transparent 60%);
+            --overlay-bg: rgba(175,184,193,0.6); --input-bg: #ffffff;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter','Segoe UI',system-ui,sans-serif; background:var(--bg-primary); background-image:var(--bg-gradient); color:var(--text-secondary); padding:24px; min-height:100vh; transition:background .3s,color .3s; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        body>* { animation:fadeIn .4s ease both; }
+        body>*:nth-child(2){animation-delay:.05s} body>*:nth-child(3){animation-delay:.1s} body>*:nth-child(4){animation-delay:.15s} body>*:nth-child(5){animation-delay:.2s} body>*:nth-child(6){animation-delay:.25s}
+        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:12px}
+        .header-left{display:flex;align-items:center;gap:14px}
+        .header-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--accent-red-dim),var(--accent-blue-dim));border:1px solid var(--border-light);border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:var(--glow-red)}
+        .header-icon svg{width:22px;height:22px;stroke:var(--accent-red);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+        .header h1{font-size:1.5em;color:var(--text-primary);font-weight:700;letter-spacing:-.02em}
+        .header .subtitle{color:var(--text-muted);font-size:.85em;margin-top:2px}
+        .header-meta{font-size:.82em;color:var(--text-muted);text-align:right;line-height:1.7}
+        .header-meta .fresh{color:var(--accent-green);font-weight:600}
+        .status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;background:var(--accent-green);animation:pulse 2s ease-in-out infinite;box-shadow:0 0 6px rgba(63,185,80,.4)}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+        .theme-toggle{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.82em;font-weight:500;display:inline-flex;align-items:center;gap:6px;transition:background .15s,border-color .15s}
+        .theme-toggle:hover{background:var(--bg-hover);border-color:var(--border-light)}
+        .theme-toggle svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+        .demo-banner{background:var(--accent-blue-dim);border:1px solid var(--accent-blue);border-radius:10px;padding:10px 18px;margin-bottom:20px;font-size:.85em;color:var(--accent-blue);display:flex;align-items:center;gap:10px}
+        .demo-banner svg{width:16px;height:16px;stroke:var(--accent-blue);fill:none;stroke-width:2;flex-shrink:0}
+        .search-bar{margin-bottom:20px;display:flex;gap:12px;align-items:center}
+        .search-input{flex:1;max-width:500px;background:var(--input-bg);border:1px solid var(--border);color:var(--text-primary);padding:10px 16px 10px 38px;border-radius:10px;font-size:.9em;font-family:inherit;outline:none;transition:border-color .2s}
+        .search-input:focus{border-color:var(--accent-blue)}
+        .search-input::placeholder{color:var(--text-muted)}
+        .search-icon{position:relative}
+        .search-icon svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;stroke:var(--text-muted);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+        .search-hint{font-size:.78em;color:var(--text-muted)}
+        .search-clear{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.82em;padding:4px 10px;border-radius:6px}
+        .search-clear:hover{color:var(--text-primary);background:var(--bg-hover)}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px}
+        .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;text-align:center;position:relative;overflow:hidden;transition:border-color .2s,transform .2s}
+        .stat-card:hover{border-color:var(--border-light);transform:translateY(-1px)}
+        .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:.6}
+        .stat-danger::before{background:linear-gradient(90deg,transparent,var(--accent-red),transparent)}
+        .stat-warning::before{background:linear-gradient(90deg,transparent,var(--accent-yellow),transparent)}
+        .stat-info::before{background:linear-gradient(90deg,transparent,var(--accent-blue),transparent)}
+        .stat-success::before{background:linear-gradient(90deg,transparent,var(--accent-green),transparent)}
+        .stat-purple::before{background:linear-gradient(90deg,transparent,var(--accent-purple),transparent)}
+        .stat-orange::before{background:linear-gradient(90deg,transparent,var(--accent-orange),transparent)}
+        .stat-card .value{font-size:2.2em;font-weight:800;margin-bottom:4px;letter-spacing:-.02em}
+        .stat-card .label{font-size:.7em;color:var(--text-muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:600}
+        .stat-card .sub{font-size:.72em;color:var(--text-muted);margin-top:4px;opacity:.7}
+        .stat-danger .value{color:var(--accent-red)} .stat-warning .value{color:var(--accent-yellow)} .stat-info .value{color:var(--accent-blue)} .stat-success .value{color:var(--accent-green)} .stat-purple .value{color:var(--accent-purple)} .stat-orange .value{color:var(--accent-orange)}
+        .section{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;margin-bottom:18px;overflow:hidden;transition:border-color .2s,background .3s}
+        .section:hover{border-color:var(--border-light)}
+        .section-title{background:var(--bg-elevated);padding:14px 22px;font-weight:600;font-size:.88em;color:var(--text-primary);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;transition:background .3s}
+        .section-title svg{width:16px;height:16px;stroke:var(--text-muted);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+        .count-badge{background:var(--bg-primary);color:var(--text-muted);font-size:.72em;padding:3px 10px;border-radius:12px;font-weight:500;border:1px solid var(--border)}
+        .section-body{padding:18px 22px}
+        table{width:100%;border-collapse:collapse} th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);font-size:.84em}
+        th{color:var(--text-muted);font-weight:600;text-transform:uppercase;font-size:.68em;letter-spacing:1.2px}
+        tr{transition:background .15s} tr:hover{background:var(--bg-hover)} tr:last-child td{border-bottom:none}
+        .ip-clickable{color:var(--accent-blue);cursor:pointer;text-decoration:none;border-bottom:1px dashed rgba(77,166,255,.3);transition:color .15s;font-family:'SF Mono','Cascadia Code',Consolas,monospace;font-size:.95em}
+        .ip-clickable:hover{border-bottom-color:rgba(121,192,255,.6)}
+        .country-flag{width:16px;height:12px;display:inline-block;vertical-align:middle;margin-right:5px;border-radius:2px;border:1px solid var(--border);object-fit:cover}
+        .country-code{font-size:.75em;color:var(--text-muted);font-weight:500;margin-left:3px}
+        .ban-countdown{font-size:.78em;color:var(--accent-red);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+        .ip-status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+        .dot-red{background:var(--accent-red);box-shadow:0 0 6px rgba(248,81,73,.5)}
+        .ban-badge{display:inline-flex;align-items:center;gap:5px;background:var(--accent-red-dim);color:var(--accent-red);padding:3px 10px;border-radius:5px;font-size:.82em;font-weight:600}
+        .tag{display:inline-block;padding:3px 9px;border-radius:5px;font-size:.72em;font-weight:600}
+        .tag-danger{background:var(--accent-red-dim);color:var(--accent-red)} .tag-warning{background:var(--accent-yellow-dim);color:var(--accent-yellow)} .tag-info{background:var(--accent-blue-dim);color:var(--accent-blue)}
+        .bar-row{display:flex;align-items:center;gap:10px;padding:7px 0}
+        .bar-row .bar-rank{color:var(--text-muted);font-size:.75em;width:18px;text-align:right;flex-shrink:0;font-weight:500}
+        .bar-row .bar-label{width:130px;flex-shrink:0;font-family:'SF Mono','Cascadia Code',Consolas,monospace;font-size:.84em}
+        .bar-row .bar-track{flex:1;height:6px;background:var(--bg-primary);border-radius:3px;overflow:hidden}
+        .bar-row .bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+        .bar-fill-danger{background:linear-gradient(90deg,var(--accent-red),#da3633)} .bar-fill-warning{background:linear-gradient(90deg,var(--accent-yellow),#bb8009)} .bar-fill-info{background:linear-gradient(90deg,var(--accent-blue),#388bfd)}
+        .bar-row .bar-value{width:36px;text-align:right;font-weight:700;font-size:.84em;flex-shrink:0;font-variant-numeric:tabular-nums}
+        .time-col{min-width:130px} .time-main{font-weight:500;color:var(--text-primary)} .relative-time{font-size:.72em;color:var(--text-muted);display:block;margin-top:1px}
+        .timeline-bar{display:flex;align-items:end;gap:2px;height:150px;padding-top:10px}
+        .timeline-bar .bar-group{flex:1;display:flex;flex-direction:column;align-items:center;min-width:0;position:relative}
+        .timeline-bar .bar{width:100%;max-width:32px;background:linear-gradient(180deg,var(--accent-blue) 0%,#1f6feb 100%);border-radius:4px 4px 0 0;min-height:2px;opacity:.85;transition:opacity .2s}
+        .timeline-bar .bar-group:hover .bar{opacity:1}
+        .timeline-bar .bar-label{font-size:.55em;color:var(--text-muted);transform:rotate(-45deg);white-space:nowrap;margin-top:6px;transform-origin:top left}
+        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+        .filter-hidden{display:none!important}
+        .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--overlay-bg);backdrop-filter:blur(4px);z-index:9999;overflow-y:auto;padding:24px}
+        .modal-overlay.active{display:flex;justify-content:center;align-items:flex-start}
+        .modal-card{background:var(--bg-secondary);border:1px solid var(--border-light);border-radius:18px;max-width:620px;width:100%;margin:40px auto;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.5);animation:fadeIn .2s ease}
+        .modal-header{background:var(--bg-elevated);padding:22px 28px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+        .modal-header h2{color:var(--text-primary);font-size:.95em;font-weight:600;display:flex;align-items:center;gap:8px}
+        .modal-header h2 svg{width:18px;height:18px;stroke:var(--accent-blue);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+        .modal-header .ip-badge{color:var(--accent-blue);font-family:'SF Mono','Cascadia Code',Consolas,monospace;font-size:1.05em;margin-top:4px;font-weight:500}
+        .modal-close{background:none;border:1px solid var(--border);color:var(--text-muted);font-size:1.2em;cursor:pointer;border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s}
+        .modal-close:hover{background:var(--bg-hover);color:var(--text-primary)}
+        .modal-body{padding:24px 28px}
+        .modal-section{margin-bottom:22px} .modal-section:last-child{margin-bottom:0}
+        .modal-section h3{font-size:.72em;color:var(--text-muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);font-weight:600}
+        .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
+        .detail-item{display:flex;flex-direction:column;gap:3px} .detail-item .dl{font-size:.65em;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600} .detail-item .dv{font-size:.88em;color:var(--text-primary)} .detail-item .dv.mono{font-family:monospace;font-size:.82em}
+        .threat-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:8px;font-size:.82em;font-weight:600}
+        .threat-malicious{background:var(--accent-red-dim);color:var(--accent-red)} .threat-unknown{background:var(--bg-primary);color:var(--text-muted);border:1px solid var(--border)}
+        .threat-dot{width:7px;height:7px;border-radius:50%} .threat-dot-malicious{background:var(--accent-red)} .threat-dot-unknown{background:var(--text-muted)}
+        .local-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:8px;font-size:.82em;font-weight:600}
+        .local-banned{background:var(--accent-red-dim);color:var(--accent-red)} .local-attacker{background:var(--accent-yellow-dim);color:var(--accent-yellow)}
+        .modal-link{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;color:var(--accent-blue);text-decoration:none;font-size:.78em;font-weight:500;transition:background .15s}
+        .modal-link:hover{background:var(--bg-hover)} .modal-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+        .map-link{color:var(--accent-blue);text-decoration:none;font-size:.85em} .map-link:hover{text-decoration:underline}
+        .footer{text-align:center;color:var(--text-muted);font-size:.78em;margin-top:28px;padding-top:20px;border-top:1px solid var(--border);opacity:.7}
+        ::-webkit-scrollbar{width:6px;height:6px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:3px}
+        @media(max-width:768px){body{padding:12px} .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px} .two-col{grid-template-columns:1fr} .bar-row .bar-label{width:100px;font-size:.78em} .detail-grid{grid-template-columns:1fr} .header{flex-direction:column;align-items:flex-start} .header-meta{text-align:left} .search-bar{flex-direction:column;align-items:stretch} .search-input{max-width:100%}}
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="header">
+    <div class="header-left">
+        <div class="header-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <div><h1>Fail2Ban Dashboard</h1><div class="subtitle">Demo -- SSH Intrusion Monitor</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()"><svg id="themeIcon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><span id="themeLabel">Light</span></button>
+        <div class="header-meta"><div>Data refreshed <span class="fresh">12s ago</span></div><div>Page: 2026-05-20 16:30:00</div><div><span class="status-dot"></span>Auto-refresh 30s</div></div>
+    </div>
+</div>
+
+<div class="demo-banner"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span>This is a static demo with sample data. <a href="https://github.com/jlaiii/fail2ban-dashboard" style="color:var(--accent-blue)">View the real project on GitHub</a></span></div>
+
+<div class="search-bar">
+    <div class="search-icon" style="flex:1;max-width:500px"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="search-input" id="searchInput" type="text" placeholder="Filter by IP, username, or time..."></div>
+    <span class="search-hint" id="searchHint"></span>
+    <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">Clear</button>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card stat-danger"><div class="value">6</div><div class="label">Currently Banned</div><div class="sub">active bans right now</div></div>
+    <div class="stat-card stat-warning"><div class="value">47</div><div class="label">Attacks / Hour</div><div class="sub">last 60 minutes</div></div>
+    <div class="stat-card stat-info"><div class="value">312</div><div class="label">Attacks / 24h</div><div class="sub">89 unique IPs</div></div>
+    <div class="stat-card stat-success"><div class="value">142</div><div class="label">Total Bans</div><div class="sub">all time</div></div>
+    <div class="stat-card stat-purple"><div class="value">26</div><div class="label">Unique IPs</div><div class="sub">seen in logs</div></div>
+    <div class="stat-card stat-orange"><div class="value">61</div><div class="label">Peak Hour</div><div class="sub">14:00</div></div>
+</div>
+
+<!-- Banned IPs -->
+<div class="section" id="bannedSection">
+    <div class="section-title"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>Currently Banned IPs<span class="count-badge">6</span></div>
+    <div class="section-body"><table>
+        <tr><th>#</th><th>IP Address</th><th>Expires</th></tr>
+        <tr data-search="45.227.254.170"><td>1</td><td><span class="ip-status-dot dot-red"></span><a class="ip-clickable" onclick="showIpDetail('45.227.254.170')">45.227.254.170</a><img class="country-flag" src="https://flagcdn.com/16x12/lt.png" alt=""><span class="country-code">LT</span></td><td><span class="ban-countdown">Expired</span></td></tr>
+        <tr data-search="45.148.10.147"><td>2</td><td><span class="ip-status-dot dot-red"></span><a class="ip-clickable" onclick="showIpDetail('45.148.10.147')">45.148.10.147</a><img class="country-flag" src="https://flagcdn.com/16x12/nl.png" alt=""><span class="country-code">NL</span></td><td><span class="ban-countdown">16m left</span></td></tr>
+        <tr data-search="87.251.64.149"><td>3</td><td><span class="ip-status-dot dot-red"></span><a class="ip-clickable" onclick="showIpDetail('87.251.64.149')">87.251.64.149</a><img class="country-flag" src="https://flagcdn.com/16x12/pl.png" alt=""><span class="country-code">PL</span></td><td><span class="ban-countdown">18m left</span></td></tr>
+        <tr data-search="45.148.10.151"><td>4</td><td><span class="ip-status-dot dot-red"></span><a class="ip-clickable" onclick="showIpDetail('45.148.10.151')">45.148.10.151</a><img class="country-flag" src="https://flagcdn.com/16x12/nl.png" alt=""><span class="country-code">NL</span></td><td><span class="ban-countdown">22m left</span></td></tr>
+        <tr data-search="92.118.39.236"><td>5</td><td><span class="ip-status-dot dot-red"></span><a class="ip-clickable" onclick="showIpDetail('92.118.39.236')">92.118.39.236</a><img class="country-flag" src="https://flagcdn.com/16x12/nl.png" alt=""><span class="country-code">NL</span></td><td><span class="ban-countdown">39m left</span></td></tr>
+        <tr data-search="45.148.10.157"><td>6</td><td><span class="ip-status-dot dot-red"></span><a class="ip-clickable" onclick="showIpDetail('45.148.10.157')">45.148.10.157</a><img class="country-flag" src="https://flagcdn.com/16x12/nl.png" alt=""><span class="country-code">NL</span></td><td><span class="ban-countdown">45m left</span></td></tr>
+    </table></div>
+</div>
+
+<!-- Ban History -->
+<div class="section">
+    <div class="section-title"><svg viewBox="0 0 24 24"><polyline points="12 8 12 12 16 14"/><circle cx="12" cy="12" r="10"/></svg>Ban History<span class="count-badge">8 samples</span></div>
+    <div class="section-body" style="max-height:350px;overflow-y:auto"><table>
+        <tr><th>When</th><th>IP Address</th><th>Jail</th><th>Ban Duration</th><th>Count</th></tr>
+        <tr data-search="45.148.10.157 sshd 13m ago"><td class="time-col"><span class="time-main">13m ago</span><span class="relative-time">2026-05-20 16:21:12</span></td><td><a class="ip-clickable" onclick="showIpDetail('45.148.10.157')">45.148.10.157</a><img class="country-flag" src="https://flagcdn.com/16x12/nl.png" alt=""><span class="country-code">NL</span></td><td>sshd</td><td><span class="tag tag-warning">1h</span></td><td>1x</td></tr>
+        <tr data-search="92.118.39.236 sshd 19m ago"><td class="time-col"><span class="time-main">19m ago</span><span class="relative-time">2026-05-20 16:15:29</span></td><td><a class="ip-clickable" onclick="showIpDetail('92.118.39.236')">92.118.39.236</a><img class="country-flag" src="https://flagcdn.com/16x12/nl.png" alt=""><span class="country-code">NL</span></td><td>sshd</td><td><span class="tag tag-warning">1h</span></td><td>1x</td></tr>
+        <tr data-search="45.148.10.151 sshd 36m ago"><td class="time-col"><span class="time-main">36m ago</span><span class="relative-time">2026-05-20 15:58:24</span></td><td><a class="ip-clickable" onclick="showIpDetail('45.148.10.151')">45.148.10.151</a><img class="country-flag" src="https://flagcdn.com/16x12/nl.png" alt=""><span class="country-code">NL</span></td><td>sshd</td><td><span class="tag tag-warning">1h</span></td><td>1x</td></tr>
+        <tr data-search="87.251.64.149 sshd 40m ago"><td class="time-col"><span class="time-main">40m ago</span><span class="relative-time">2026-05-20 15:54:35</span></td><td><a class="ip-clickable" onclick="showIpDetail('87.251.64.149')">87.251.64.149</a><img class="country-flag" src="https://flagcdn.com/16x12/pl.png" alt=""><span class="country-code">PL</span></td><td>sshd</td><td><span class="tag tag-warning">1h</span></td><td>1x</td></tr>
+        <tr data-search="115.190.211.111 sshd 2h ago"><td class="time-col"><span class="time-main">2h ago</span><span class="relative-time">2026-05-20 14:29:50</span></td><td><a class="ip-clickable" onclick="showIpDetail('115.190.211.111')">115.190.211.111</a><img class="country-flag" src="https://flagcdn.com/16x12/cn.png" alt=""><span class="country-code">CN</span></td><td>sshd</td><td><span class="tag tag-warning">1h</span></td><td>1x</td></tr>
+        <tr data-search="178.175.167.17 sshd 4h ago"><td class="time-col"><span class="time-main">4h ago</span><span class="relative-time">2026-05-20 12:30:41</span></td><td><a class="ip-clickable" onclick="showIpDetail('178.175.167.17')">178.175.167.17</a><img class="country-flag" src="https://flagcdn.com/16x12/md.png" alt=""><span class="country-code">MD</span></td><td>sshd</td><td><span class="tag tag-warning">1h</span></td><td>1x</td></tr>
+        <tr data-search="23.101.217.64 sshd 5h ago"><td class="time-col"><span class="time-main">5h ago</span><span class="relative-time">2026-05-20 11:18:45</span></td><td><a class="ip-clickable" onclick="showIpDetail('23.101.217.64')">23.101.217.64</a><img class="country-flag" src="https://flagcdn.com/16x12/au.png" alt=""><span class="country-code">AU</span></td><td>sshd</td><td><span class="tag tag-info">10m</span></td><td>1x</td></tr>
+        <tr data-search="45.227.254.170 sshd 1h ago"><td class="time-col"><span class="time-main">1h ago</span><span class="relative-time">2026-05-20 15:35:36</span></td><td><a class="ip-clickable" onclick="showIpDetail('45.227.254.170')">45.227.254.170</a><img class="country-flag" src="https://flagcdn.com/16x12/lt.png" alt=""><span class="country-code">LT</span></td><td>sshd</td><td><span class="tag tag-warning">1h</span></td><td>1x</td></tr>
+    </table></div>
+</div>
+
+<div class="two-col">
+    <!-- Top IPs -->
+    <div class="section">
+        <div class="section-title"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Top Attacker IPs<span class="count-badge">8</span></div>
+        <div class="section-body">
+            <div class="bar-row" data-search="45.148.10.147"><div class="bar-rank">1</div><div class="bar-label"><a class="ip-clickable" onclick="showIpDetail('45.148.10.147')">45.148.10.147</a><img class="country-flag" src="https://flagcdn.com/16x12/nl.png" alt=""><span class="country-code">NL</span></div><div class="bar-track"><div class="bar-fill bar-fill-danger" style="width:100%"></div></div><div class="bar-value">312</div></div>
+            <div class="bar-row" data-search="92.118.39.236"><div class="bar-rank">2</div><div class="bar-label"><a class="ip-clickable" onclick="showIpDetail('92.118.39.236')">92.118.39.236</a><img class="country-flag" src="https://flagcdn.com/16x12/nl.png" alt=""><span class="country-code">NL</span></div><div class="bar-track"><div class="bar-fill bar-fill-danger" style="width:74%"></div></div><div class="bar-value">231</div></div>
+            <div class="bar-row" data-search="87.251.64.149"><div class="bar-rank">3</div><div class="bar-label"><a class="ip-clickable" onclick="showIpDetail('87.251.64.149')">87.251.64.149</a><img class="country-flag" src="https://flagcdn.com/16x12/pl.png" alt=""><span class="country-code">PL</span></div><div class="bar-track"><div class="bar-fill bar-fill-danger" style="width:58%"></div></div><div class="bar-value">181</div></div>
+            <div class="bar-row" data-search="45.227.254.170"><div class="bar-rank">4</div><div class="bar-label"><a class="ip-clickable" onclick="showIpDetail('45.227.254.170')">45.227.254.170</a><img class="country-flag" src="https://flagcdn.com/16x12/lt.png" alt=""><span class="country-code">LT</span></div><div class="bar-track"><div class="bar-fill bar-fill-danger" style="width:42%"></div></div><div class="bar-value">131</div></div>
+            <div class="bar-row" data-search="115.190.211.111"><div class="bar-rank">5</div><div class="bar-label"><a class="ip-clickable" onclick="showIpDetail('115.190.211.111')">115.190.211.111</a><img class="country-flag" src="https://flagcdn.com/16x12/cn.png" alt=""><span class="country-code">CN</span></div><div class="bar-track"><div class="bar-fill bar-fill-danger" style="width:29%"></div></div><div class="bar-value">91</div></div>
+            <div class="bar-row" data-search="178.175.167.17"><div class="bar-rank">6</div><div class="bar-label"><a class="ip-clickable" onclick="showIpDetail('178.175.167.17')">178.175.167.17</a><img class="country-flag" src="https://flagcdn.com/16x12/md.png" alt=""><span class="country-code">MD</span></div><div class="bar-track"><div class="bar-fill bar-fill-danger" style="width:19%"></div></div><div class="bar-value">59</div></div>
+        </div>
+    </div>
+    <!-- Top Usernames -->
+    <div class="section">
+        <div class="section-title"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Top Targeted Usernames<span class="count-badge">6</span></div>
+        <div class="section-body">
+            <div class="bar-row" data-search="root"><div class="bar-rank">1</div><div class="bar-label"><code>root</code></div><div class="bar-track"><div class="bar-fill bar-fill-warning" style="width:100%"></div></div><div class="bar-value">847</div></div>
+            <div class="bar-row" data-search="admin"><div class="bar-rank">2</div><div class="bar-label"><code>admin</code></div><div class="bar-track"><div class="bar-fill bar-fill-warning" style="width:45%"></div></div><div class="bar-value">381</div></div>
+            <div class="bar-row" data-search="ubuntu"><div class="bar-rank">3</div><div class="bar-label"><code>ubuntu</code></div><div class="bar-track"><div class="bar-fill bar-fill-warning" style="width:28%"></div></div><div class="bar-value">237</div></div>
+            <div class="bar-row" data-search="user"><div class="bar-rank">4</div><div class="bar-label"><code>user</code></div><div class="bar-track"><div class="bar-fill bar-fill-warning" style="width:18%"></div></div><div class="bar-value">152</div></div>
+            <div class="bar-row" data-search="test"><div class="bar-rank">5</div><div class="bar-label"><code>test</code></div><div class="bar-track"><div class="bar-fill bar-fill-warning" style="width:12%"></div></div><div class="bar-value">101</div></div>
+            <div class="bar-row" data-search="oracle"><div class="bar-rank">6</div><div class="bar-label"><code>oracle</code></div><div class="bar-track"><div class="bar-fill bar-fill-warning" style="width:7%"></div></div><div class="bar-value">59</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Timeline -->
+<div class="section">
+    <div class="section-title"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Attack Timeline<span class="count-badge">by hour</span></div>
+    <div class="section-body"><div class="timeline-container"><div class="timeline-bar">
+        <div class="bar-group" title="06: 3"><div class="bar" style="height:3px"></div><div class="bar-label">06:00</div></div>
+        <div class="bar-group" title="07: 5"><div class="bar" style="height:5px"></div><div class="bar-label">07:00</div></div>
+        <div class="bar-group" title="08: 12"><div class="bar" style="height:12px"></div><div class="bar-label">08:00</div></div>
+        <div class="bar-group" title="09: 28"><div class="bar" style="height:28px"></div><div class="bar-label">09:00</div></div>
+        <div class="bar-group" title="10: 45"><div class="bar" style="height:45px"></div><div class="bar-label">10:00</div></div>
+        <div class="bar-group" title="11: 61"><div class="bar" style="height:61px"></div><div class="bar-label">11:00</div></div>
+        <div class="bar-group" title="12: 38"><div class="bar" style="height:38px"></div><div class="bar-label">12:00</div></div>
+        <div class="bar-group" title="13: 52"><div class="bar" style="height:52px"></div><div class="bar-label">13:00</div></div>
+        <div class="bar-group" title="14: 61"><div class="bar" style="height:61px"></div><div class="bar-label">14:00</div></div>
+        <div class="bar-group" title="15: 47"><div class="bar" style="height:47px"></div><div class="bar-label">15:00</div></div>
+        <div class="bar-group" title="16: 32"><div class="bar" style="height:32px"></div><div class="bar-label">16:00</div></div>
+    </div></div></div>
+</div>
+
+<!-- Recent Attacks -->
+<div class="section">
+    <div class="section-title"><svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Recent Attacks<span class="count-badge">6</span></div>
+    <div class="section-body"><table>
+        <tr><th>When</th><th>Username</th><th>IP Address</th></tr>
+        <tr data-search="45.148.10.147 root 1m ago"><td class="time-col"><span class="time-main">1m ago</span><span class="relative-time">2026-05-20 16:29:12</span></td><td><code>root</code></td><td><a class="ip-clickable" onclick="showIpDetail('45.148.10.147')">45.148.10.147</a><img class="country-flag" src="https://flagcdn.com/16x12/nl.png" alt=""><span class="country-code">NL</span></td></tr>
+        <tr data-search="92.118.39.236 admin 3m ago"><td class="time-col"><span class="time-main">3m ago</span><span class="relative-time">2026-05-20 16:27:45</span></td><td><code>admin</code></td><td><a class="ip-clickable" onclick="showIpDetail('92.118.39.236')">92.118.39.236</a><img class="country-flag" src="https://flagcdn.com/16x12/nl.png" alt=""><span class="country-code">NL</span></td></tr>
+        <tr data-search="87.251.64.149 root 7m ago"><td class="time-col"><span class="time-main">7m ago</span><span class="relative-time">2026-05-20 16:23:01</span></td><td><code>root</code></td><td><a class="ip-clickable" onclick="showIpDetail('87.251.64.149')">87.251.64.149</a><img class="country-flag" src="https://flagcdn.com/16x12/pl.png" alt=""><span class="country-code">PL</span></td></tr>
+        <tr data-search="45.227.254.170 ubuntu 12m ago"><td class="time-col"><span class="time-main">12m ago</span><span class="relative-time">2026-05-20 16:18:33</span></td><td><code>ubuntu</code></td><td><a class="ip-clickable" onclick="showIpDetail('45.227.254.170')">45.227.254.170</a><img class="country-flag" src="https://flagcdn.com/16x12/lt.png" alt=""><span class="country-code">LT</span></td></tr>
+        <tr data-search="115.190.211.111 root 25m ago"><td class="time-col"><span class="time-main">25m ago</span><span class="relative-time">2026-05-20 16:05:12</span></td><td><code>root</code></td><td><a class="ip-clickable" onclick="showIpDetail('115.190.211.111')">115.190.211.111</a><img class="country-flag" src="https://flagcdn.com/16x12/cn.png" alt=""><span class="country-code">CN</span></td></tr>
+        <tr data-search="178.175.167.17 test 41m ago"><td class="time-col"><span class="time-main">41m ago</span><span class="relative-time">2026-05-20 15:49:44</span></td><td><code>test</code></td><td><a class="ip-clickable" onclick="showIpDetail('178.175.167.17')">178.175.167.17</a><img class="country-flag" src="https://flagcdn.com/16x12/md.png" alt=""><span class="country-code">MD</span></td></tr>
+    </table></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="ipModal">
+    <div class="modal-card">
+        <div class="modal-header"><div><h2><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>IP Intelligence</h2><div class="ip-badge" id="modalIp"></div></div><button class="modal-close" onclick="closeModal()">&times;</button></div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<script>
+// Demo data for IP lookups
+var demoData = {
+    '45.148.10.147': { geo:{country:'The Netherlands',country_code:'NL',region:'North Holland',city:'Amsterdam',postal:'1012',timezone:'Europe/Amsterdam',latitude:52.37,longitude:4.9,isp:'The Hague Security',org:'The Hague Security',asn:'AS212338',source:'ipapi.co'}, threat:{classification:'malicious',noise:true,riot:false,message:'This IP has been observed scanning the internet.',link:'https://viz.greynoise.io/ip/45.148.10.147',source:'GreyNoise'}, local:{attack_count:312,usernames_tried:['root','admin','ubuntu','user'],currently_banned:true,ban_info:{time:'2026-05-20 15:52:41',bantime:3600}} },
+    '92.118.39.236': { geo:{country:'The Netherlands',country_code:'NL',region:'North Holland',city:'Amsterdam',postal:'',timezone:'Europe/Amsterdam',latitude:52.37,longitude:4.9,isp:'FlokiNET',org:'FlokiNET',asn:'AS200651',source:'ipapi.co'}, threat:{classification:'malicious',noise:true,riot:false,message:'This IP has been observed scanning the internet.',link:'https://viz.greynoise.io/ip/92.118.39.236',source:'GreyNoise'}, local:{attack_count:231,usernames_tried:['root','admin'],currently_banned:true,ban_info:{time:'2026-05-20 16:15:29',bantime:3600}} },
+    '87.251.64.149': { geo:{country:'Poland',country_code:'PL',region:'Mazovia',city:'Warsaw',postal:'00-001',timezone:'Europe/Warsaw',latitude:52.23,longitude:21.01,isp:'Green Floid',org:'Green Floid LLC',asn:'AS50245',source:'ipapi.co'}, threat:{classification:'malicious',noise:true,riot:false,message:'This IP has been observed scanning the internet.',link:'https://viz.greynoise.io/ip/87.251.64.149',source:'GreyNoise'}, local:{attack_count:181,usernames_tried:['root','admin','oracle'],currently_banned:true,ban_info:{time:'2026-05-20 15:54:35',bantime:3600}} },
+    '45.227.254.170': { geo:{country:'Lithuania',country_code:'LT',region:'Vilnius',city:'Vilnius',postal:'01103',timezone:'Europe/Vilnius',latitude:54.69,longitude:25.28,isp:'UAB Host',org:'UAB Host Solutions',asn:'AS212469',source:'ipapi.co'}, threat:{classification:'unknown',noise:false,riot:false,message:'IP not found in GreyNoise dataset.',link:'',source:'GreyNoise'}, local:{attack_count:131,usernames_tried:['root','ubuntu','user'],currently_banned:true,ban_info:{time:'2026-05-20 15:35:36',bantime:3600}} },
+    '115.190.211.111': { geo:{country:'China',country_code:'CN',region:'Zhejiang',city:'Hangzhou',postal:'',timezone:'Asia/Shanghai',latitude:30.29,longitude:120.16,isp:'China Telecom',org:'China Telecom Zhejiang',asn:'AS4134',source:'ipapi.co'}, threat:{classification:'malicious',noise:true,riot:false,message:'This IP has been observed scanning the internet.',link:'https://viz.greynoise.io/ip/115.190.211.111',source:'GreyNoise'}, local:{attack_count:91,usernames_tried:['root','admin','test','ubuntu'],currently_banned:false,ban_info:{time:'2026-05-20 14:29:50',bantime:3600}} },
+    '178.175.167.17': { geo:{country:'Moldova',country_code:'MD',region:'Chisinau',city:'Chisinau',postal:'MD-2000',timezone:'Europe/Chisinau',latitude:47.01,longitude:28.86,isp:'Moldtelecom',org:'JSC Moldtelecom',asn:'AS8926',source:'ipapi.co'}, threat:{classification:'unknown',noise:false,riot:false,message:'IP not found in GreyNoise dataset.',link:'',source:'GreyNoise'}, local:{attack_count:59,usernames_tried:['root','test'],currently_banned:false,ban_info:{time:'2026-05-20 12:30:41',bantime:3600}} },
+    '45.148.10.151': { geo:{country:'The Netherlands',country_code:'NL',region:'North Holland',city:'Amsterdam',postal:'',timezone:'Europe/Amsterdam',latitude:52.37,longitude:4.9,isp:'The Hague Security',org:'The Hague Security',asn:'AS212338',source:'ipapi.co'}, threat:{classification:'malicious',noise:true,riot:false,message:'This IP has been observed scanning the internet.',link:'https://viz.greynoise.io/ip/45.148.10.151',source:'GreyNoise'}, local:{attack_count:78,usernames_tried:['root'],currently_banned:true,ban_info:{time:'2026-05-20 15:58:24',bantime:3600}} },
+    '45.148.10.157': { geo:{country:'The Netherlands',country_code:'NL',region:'North Holland',city:'Amsterdam',postal:'',timezone:'Europe/Amsterdam',latitude:52.37,longitude:4.9,isp:'The Hague Security',org:'The Hague Security',asn:'AS212338',source:'ipapi.co'}, threat:{classification:'malicious',noise:true,riot:false,message:'This IP has been observed scanning the internet.',link:'https://viz.greynoise.io/ip/45.148.10.157',source:'GreyNoise'}, local:{attack_count:95,usernames_tried:['root','admin'],currently_banned:true,ban_info:{time:'2026-05-20 16:21:12',bantime:3600}} },
+    '23.101.217.64': { geo:{country:'Australia',country_code:'AU',region:'Victoria',city:'Melbourne',postal:'3000',timezone:'Australia/Melbourne',latitude:-37.81,longitude:144.96,isp:'Microsoft Azure',org:'Microsoft Corporation',asn:'AS8075',source:'ipapi.co'}, threat:{classification:'unknown',noise:false,riot:true,message:'This IP belongs to a known business service (RIOT).',link:'https://viz.greynoise.io/ip/23.101.217.64',source:'GreyNoise'}, local:{attack_count:3,usernames_tried:['admin'],currently_banned:false,ban_info:{time:'2026-05-20 11:18:45',bantime:600}} },
+};
+
+function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML}
+function formatDuration(s){if(s>=86400)return Math.floor(s/86400)+'d';if(s>=3600){var h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return m>0?h+'h '+m+'m':h+'h'}if(s>=60)return Math.floor(s/60)+'m';return s+'s'}
+function showIpDetail(ip){var m=document.getElementById('ipModal'),b=document.getElementById('modalBody');document.getElementById('modalIp').textContent=ip;m.classList.add('active');var d=demoData[ip];if(!d){b.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)">Demo data not available for this IP</div>';return}var h='';h+='<div class="modal-section"><h3>Local Status</h3><div class="detail-grid">';var lb=d.local.currently_banned?'<span class="local-badge local-banned"><span class="ip-status-dot dot-red"></span>BANNED</span>':'<span class="local-badge local-attacker">Attacked '+d.local.attack_count+'x</span>';h+='<div class="detail-item"><div class="dl">Status</div><div class="dv">'+lb+'</div></div>';h+='<div class="detail-item"><div class="dl">Attack Count</div><div class="dv mono">'+d.local.attack_count+'</div></div>';if(d.local.ban_info){h+='<div class="detail-item"><div class="dl">Ban Time</div><div class="dv mono">'+esc(d.local.ban_info.time)+'</div></div>';h+='<div class="detail-item"><div class="dl">Ban Duration</div><div class="dv mono">'+formatDuration(d.local.ban_info.bantime)+'</div></div>'}h+='</div>';if(d.local.usernames_tried&&d.local.usernames_tried.length){h+='<div style="margin-top:10px;font-size:.78em;color:var(--text-muted)">Usernames tried: '+d.local.usernames_tried.map(function(u){return'<code>'+esc(u)+'</code>'}).join(', ')+'</div>'}h+='</div>';if(d.geo){h+='<div class="modal-section"><h3>Geolocation</h3><div class="detail-grid">';if(d.geo.country)h+='<div class="detail-item"><div class="dl">Country</div><div class="dv">'+esc(d.geo.country)+' ('+esc(d.geo.country_code)+')</div></div>';if(d.geo.city)h+='<div class="detail-item"><div class="dl">City</div><div class="dv">'+esc(d.geo.city)+(d.geo.region?', '+esc(d.geo.region):'')+'</div></div>';if(d.geo.postal)h+='<div class="detail-item"><div class="dl">Postal</div><div class="dv mono">'+esc(d.geo.postal)+'</div></div>';if(d.geo.timezone)h+='<div class="detail-item"><div class="dl">Timezone</div><div class="dv">'+esc(d.geo.timezone)+'</div></div>';if(d.geo.latitude!=null)h+='<div class="detail-item"><div class="dl">Coordinates</div><div class="dv mono">'+d.geo.latitude+', '+d.geo.longitude+' <a class="map-link" href="https://www.google.com/maps?q='+d.geo.latitude+','+d.geo.longitude+'" target="_blank">Map</a></div></div>';if(d.geo.isp)h+='<div class="detail-item"><div class="dl">ISP</div><div class="dv">'+esc(d.geo.isp)+'</div></div>';if(d.geo.org)h+='<div class="detail-item"><div class="dl">Organization</div><div class="dv">'+esc(d.geo.org)+'</div></div>';if(d.geo.asn)h+='<div class="detail-item"><div class="dl">ASN</div><div class="dv mono">'+esc(d.geo.asn)+'</div></div>';h+='</div><div style="margin-top:6px;font-size:.65em;color:var(--text-muted)">Source: '+esc(d.geo.source)+'</div></div>'}if(d.threat){h+='<div class="modal-section"><h3>Threat Intelligence</h3>';var cls=d.threat.classification||'unknown',bc=cls==='malicious'?'threat-malicious':'threat-unknown',dc=cls==='malicious'?'threat-dot-malicious':'threat-dot-unknown',bt=cls.charAt(0).toUpperCase()+cls.slice(1);h+='<div style="margin-bottom:14px"><span class="threat-badge '+bc+'"><span class="threat-dot '+dc+'"></span>'+esc(bt)+'</span></div><div class="detail-grid">';if(d.threat.noise!==undefined)h+='<div class="detail-item"><div class="dl">Internet Noise</div><div class="dv">'+(d.threat.noise?'Yes':'No')+'</div></div>';if(d.threat.riot!==undefined)h+='<div class="detail-item"><div class="dl">Known Business IP</div><div class="dv">'+(d.threat.riot?'Yes':'No')+'</div></div>';if(d.threat.message)h+='<div class="detail-item"><div class="dl">Notes</div><div class="dv" style="font-size:.82em">'+esc(d.threat.message)+'</div></div>';h+='</div>';if(d.threat.link)h+='<div style="margin-top:10px"><a class="modal-link" href="'+esc(d.threat.link)+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px">View on GreyNoise</a></div>';h+='<div style="margin-top:6px;font-size:.65em;color:var(--text-muted)">Source: '+esc(d.threat.source)+'</div></div>'}h+='<div class="modal-section"><h3>External Lookups</h3><div class="modal-links">';h+='<a class="modal-link" href="https://www.abuseipdb.com/check/'+ip+'" target="_blank">AbuseIPDB</a>';h+='<a class="modal-link" href="https://www.virustotal.com/gui/ip-address/'+ip+'" target="_blank">VirusTotal</a>';h+='<a class="modal-link" href="https://www.shodan.io/host/'+ip+'" target="_blank">Shodan</a>';h+='<a class="modal-link" href="https://search.censys.io/hosts/'+ip+'" target="_blank">Censys</a>';h+='</div></div>';b.innerHTML=h}
+function closeModal(){document.getElementById('ipModal').classList.remove('active')}
+document.getElementById('ipModal').addEventListener('click',function(e){if(e.target===this)closeModal()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()});
+
+// Theme toggle
+function toggleTheme(){var c=document.documentElement.getAttribute('data-theme');applyTheme(c==='dark'?'light':'dark')}
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);var i=document.getElementById('themeIcon'),l=document.getElementById('themeLabel');if(t==='dark'){i.innerHTML='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';l.textContent='Light'}else{i.innerHTML='<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';l.textContent='Dark'}localStorage.setItem('f2b-theme',t)}
+applyTheme(localStorage.getItem('f2b-theme')||'dark');
+
+// Search
+var si=document.getElementById('searchInput'),sh=document.getElementById('searchHint'),sc=document.getElementById('searchClear');
+function applyFilter(){var q=si.value.trim().toLowerCase();sc.style.display=q?'inline-block':'none';var rows=document.querySelectorAll('[data-search]'),mc=0;rows.forEach(function(el){var t=el.getAttribute('data-search')||'';var m=!q||t.toLowerCase().indexOf(q)!==-1;if(m){el.classList.remove('filter-hidden');mc++}else{el.classList.add('filter-hidden')}});sh.textContent=q?mc+' matches':''}
+si.addEventListener('input',applyFilter);
+function clearSearch(){si.value='';applyFilter();si.focus()}
+</script>
+
+<div class="footer">Fail2Ban Dashboard -- demo with sample data -- <a href="https://github.com/jlaiii/fail2ban-dashboard" style="color:var(--accent-blue)">View on GitHub</a></div>
+</body>
+</html>

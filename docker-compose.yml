@@ -1,0 +1,8 @@
+services:
+  dashboard:
+    build: ./app
+    container_name: f2b-dashboard
+    restart: unless-stopped
+    volumes:
+      - /var/lib/fail2ban-dashboard/f2b-status.json:/host_data/f2b-status.json:ro
+    network_mode: host

@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fail2Ban Dashboard -- jlaiii</title>
+    <style>
+        :root, [data-theme="dark"] {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #111620;
+            --bg-card: #151b27;
+            --bg-elevated: #1a2233;
+            --bg-hover: #1e2740;
+            --border: #1e2a3a;
+            --border-light: #253045;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b9ab5;
+            --text-muted: #5a6a85;
+            --accent-blue: #4da6ff;
+            --accent-blue-dim: #1a3a5c;
+            --accent-red: #f85149;
+            --accent-red-dim: #3d1a1a;
+            --accent-yellow: #e3b341;
+            --accent-yellow-dim: #3d3018;
+            --accent-green: #3fb950;
+            --accent-green-dim: #1a3d24;
+            --accent-purple: #a78bfa;
+            --accent-purple-dim: #2a1f4e;
+            --accent-orange: #f0883e;
+            --accent-orange-dim: #3d2510;
+            --glow-red: 0 0 20px rgba(248, 81, 73, 0.15);
+            --glow-blue: 0 0 20px rgba(77, 166, 255, 0.1);
+            --glow-green: 0 0 20px rgba(63, 185, 80, 0.1);
+            --glow-yellow: 0 0 20px rgba(227, 179, 65, 0.1);
+            --bg-gradient: radial-gradient(ellipse at 50% 0%, rgba(77, 166, 255, 0.03) 0%, transparent 60%);
+            --overlay-bg: rgba(5, 8, 12, 0.85);
+            --input-bg: #0d1117;
+        }
+        [data-theme="light"] {
+            --bg-primary: #f6f8fa;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-elevated: #f3f4f6;
+            --bg-hover: #eef0f3;
+            --border: #d8dee4;
+            --border-light: #c8cdd3;
+            --text-primary: #1f2328;
+            --text-secondary: #656d76;
+            --text-muted: #8b949e;
+            --accent-blue: #0969da;
+            --accent-blue-dim: #ddf4ff;
+            --accent-red: #cf222e;
+            --accent-red-dim: #ffebe9;
+            --accent-yellow: #9a6700;
+            --accent-yellow-dim: #fff8c5;
+            --accent-green: #1a7f37;
+            --accent-green-dim: #dafbe1;
+            --accent-purple: #8250df;
+            --accent-purple-dim: #fbefff;
+            --accent-orange: #bc4c00;
+            --accent-orange-dim: #fff1e5;
+            --glow-red: 0 0 20px rgba(207, 34, 46, 0.08);
+            --glow-blue: 0 0 20px rgba(9, 105, 218, 0.06);
+            --glow-green: 0 0 20px rgba(26, 127, 55, 0.06);
+            --glow-yellow: 0 0 20px rgba(154, 103, 0, 0.06);
+            --bg-gradient: radial-gradient(ellipse at 50% 0%, rgba(9, 105, 218, 0.04) 0%, transparent 60%);
+            --overlay-bg: rgba(175, 184, 193, 0.6);
+            --input-bg: #ffffff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            background-image: var(--bg-gradient);
+            color: var(--text-secondary);
+            padding: 24px;
+            min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        body > * { animation: fadeIn 0.4s ease both; }
+        body > *:nth-child(2) { animation-delay: 0.05s; }
+        body > *:nth-child(3) { animation-delay: 0.1s; }
+        body > *:nth-child(4) { animation-delay: 0.15s; }
+        body > *:nth-child(5) { animation-delay: 0.2s; }
+        body > *:nth-child(6) { animation-delay: 0.25s; }
+        body > *:nth-child(7) { animation-delay: 0.3s; }
+        body > *:nth-child(8) { animation-delay: 0.35s; }
+
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 12px; }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .header-icon { width: 42px; height: 42px; background: linear-gradient(135deg, var(--accent-red-dim), var(--accent-blue-dim)); border: 1px solid var(--border-light); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: var(--glow-red); }
+        .header-icon svg { width: 22px; height: 22px; stroke: var(--accent-red); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .header h1 { font-size: 1.5em; color: var(--text-primary); font-weight: 700; letter-spacing: -0.02em; }
+        .header .subtitle { color: var(--text-muted); font-size: 0.85em; margin-top: 2px; }
+        .header-meta { font-size: 0.82em; color: var(--text-muted); text-align: right; line-height: 1.7; }
+        .header-meta .fresh { color: var(--accent-green); font-weight: 600; }
+        .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; background: var(--accent-green); animation: pulse 2s ease-in-out infinite; box-shadow: 0 0 6px rgba(63, 185, 80, 0.4); }
+        .theme-toggle { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.82em; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s, border-color 0.15s; }
+        .theme-toggle:hover { background: var(--bg-hover); border-color: var(--border-light); }
+        .theme-toggle svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* Search */
+        .search-bar { margin-bottom: 20px; display: flex; gap: 12px; align-items: center; }
+        .search-input { flex: 1; max-width: 500px; background: var(--input-bg); border: 1px solid var(--border); color: var(--text-primary); padding: 10px 16px 10px 38px; border-radius: 10px; font-size: 0.9em; font-family: inherit; outline: none; transition: border-color 0.2s; }
+        .search-input:focus { border-color: var(--accent-blue); }
+        .search-input::placeholder { color: var(--text-muted); }
+        .search-icon { position: relative; }
+        .search-icon svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; stroke: var(--text-muted); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+        .search-hint { font-size: 0.78em; color: var(--text-muted); }
+        .search-clear { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.82em; padding: 4px 10px; border-radius: 6px; }
+        .search-clear:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 28px; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; text-align: center; position: relative; overflow: hidden; transition: border-color 0.2s, transform 0.2s; }
+        .stat-card:hover { border-color: var(--border-light); transform: translateY(-1px); }
+        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; opacity: 0.6; }
+        .stat-danger::before { background: linear-gradient(90deg, transparent, var(--accent-red), transparent); }
+        .stat-warning::before { background: linear-gradient(90deg, transparent, var(--accent-yellow), transparent); }
+        .stat-info::before { background: linear-gradient(90deg, transparent, var(--accent-blue), transparent); }
+        .stat-success::before { background: linear-gradient(90deg, transparent, var(--accent-green), transparent); }
+        .stat-purple::before { background: linear-gradient(90deg, transparent, var(--accent-purple), transparent); }
+        .stat-orange::before { background: linear-gradient(90deg, transparent, var(--accent-orange), transparent); }
+        .stat-card .value { font-size: 2.2em; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.02em; }
+        .stat-card .label { font-size: 0.7em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+        .stat-card .sub { font-size: 0.72em; color: var(--text-muted); margin-top: 4px; opacity: 0.7; }
+        .stat-danger .value { color: var(--accent-red); }
+        .stat-warning .value { color: var(--accent-yellow); }
+        .stat-info .value { color: var(--accent-blue); }
+        .stat-success .value { color: var(--accent-green); }
+        .stat-purple .value { color: var(--accent-purple); }
+        .stat-orange .value { color: var(--accent-orange); }
+
+        /* Sections */
+        .section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 18px; overflow: hidden; transition: border-color 0.2s, background 0.3s; }
+        .section:hover { border-color: var(--border-light); }
+        .section-title { background: var(--bg-elevated); padding: 14px 22px; font-weight: 600; font-size: 0.88em; color: var(--text-primary); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; transition: background 0.3s; }
+        .section-title svg { width: 16px; height: 16px; stroke: var(--text-muted); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+        .count-badge { background: var(--bg-primary); color: var(--text-muted); font-size: 0.72em; padding: 3px 10px; border-radius: 12px; font-weight: 500; border: 1px solid var(--border); }
+        .section-body { padding: 18px 22px; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.84em; }
+        th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.68em; letter-spacing: 1.2px; }
+        tr { transition: background 0.15s; }
+        tr:hover { background: var(--bg-hover); }
+        tr:last-child td { border-bottom: none; }
+
+        /* Banned badge */
+        .ban-badge { display: inline-flex; align-items: center; gap: 5px; background: var(--accent-red-dim); color: var(--accent-red); padding: 3px 10px; border-radius: 5px; font-size: 0.82em; font-weight: 600; }
+        .ban-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-red); box-shadow: 0 0 4px var(--accent-red); }
+        .attack-badge { display: inline-flex; align-items: center; gap: 5px; background: var(--accent-yellow-dim); color: var(--accent-yellow); padding: 3px 10px; border-radius: 5px; font-size: 0.82em; font-weight: 600; }
+        .relative-time { font-size: 0.72em; color: var(--text-muted); display: block; margin-top: 1px; }
+        .time-col { min-width: 130px; }
+        .time-main { font-weight: 500; color: var(--text-primary); }
+
+        /* Clickable IPs */
+        .ip-clickable { color: var(--accent-blue); cursor: pointer; text-decoration: none; border-bottom: 1px dashed rgba(77, 166, 255, 0.3); transition: color 0.15s, border-bottom-color 0.15s; font-family: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace; font-size: 0.95em; }
+        .ip-clickable:hover { border-bottom-color: rgba(121, 192, 255, 0.6); }
+
+        /* Country flag */
+        .country-flag { width: 16px; height: 12px; display: inline-block; vertical-align: middle; margin-right: 5px; border-radius: 2px; border: 1px solid var(--border); object-fit: cover; }
+        .country-code { font-size: 0.75em; color: var(--text-muted); font-weight: 500; margin-left: 3px; }
+
+        /* Ban countdown */
+        .ban-countdown { font-size: 0.78em; color: var(--accent-red); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .ban-countdown.expired { color: var(--text-muted); }
+
+        /* Progress bars */
+        .bar-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+        .bar-row .bar-rank { color: var(--text-muted); font-size: 0.75em; width: 18px; text-align: right; flex-shrink: 0; font-weight: 500; }
+        .bar-row .bar-label { width: 130px; flex-shrink: 0; font-family: 'SF Mono', 'Cascadia Code', Consolas, monospace; font-size: 0.84em; }
+        .bar-row .bar-track { flex: 1; height: 6px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; }
+        .bar-row .bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+        .bar-fill-danger { background: linear-gradient(90deg, var(--accent-red), #da3633); }
+        .bar-fill-warning { background: linear-gradient(90deg, var(--accent-yellow), #bb8009); }
+        .bar-fill-info { background: linear-gradient(90deg, var(--accent-blue), #388bfd); }
+        .bar-row .bar-value { width: 36px; text-align: right; font-weight: 700; font-size: 0.84em; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+        /* Timeline */
+        .timeline-container { position: relative; }
+        .timeline-bar { display: flex; align-items: end; gap: 2px; height: 150px; padding-top: 10px; }
+        .timeline-bar .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; position: relative; }
+        .timeline-bar .bar { width: 100%; max-width: 32px; background: linear-gradient(180deg, var(--accent-blue) 0%, #1f6feb 100%); border-radius: 4px 4px 0 0; min-height: 2px; transition: height 0.4s, opacity 0.2s; opacity: 0.85; }
+        .timeline-bar .bar-group:hover .bar { opacity: 1; }
+        .timeline-bar .bar-label { font-size: 0.55em; color: var(--text-muted); transform: rotate(-45deg); white-space: nowrap; margin-top: 6px; transform-origin: top left; }
+        .timeline-bar .bar-group:hover .bar-label { color: var(--text-secondary); }
+
+        /* Tags */
+        .tag { display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 0.72em; font-weight: 600; }
+        .tag-danger { background: var(--accent-red-dim); color: var(--accent-red); }
+        .tag-warning { background: var(--accent-yellow-dim); color: var(--accent-yellow); }
+        .tag-success { background: var(--accent-green-dim); color: var(--accent-green); }
+        .tag-info { background: var(--accent-blue-dim); color: var(--accent-blue); }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+        .empty-state { text-align: center; padding: 30px; color: var(--text-muted); font-size: 0.9em; }
+
+        /* IP status dot */
+        .ip-status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+        .dot-red { background: var(--accent-red); box-shadow: 0 0 6px rgba(248, 81, 73, 0.5); }
+
+        /* Filter hidden */
+        .filter-hidden { display: none !important; }
+
+        /* ============ MODAL ============ */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--overlay-bg); backdrop-filter: blur(4px); z-index: 9999; overflow-y: auto; padding: 24px; }
+        .modal-overlay.active { display: flex; justify-content: center; align-items: flex-start; }
+        .modal-card { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 18px; max-width: 620px; width: 100%; margin: 40px auto; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.5); animation: fadeIn 0.2s ease; }
+        .modal-header { background: var(--bg-elevated); padding: 22px 28px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+        .modal-header h2 { color: var(--text-primary); font-size: 0.95em; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .modal-header h2 svg { width: 18px; height: 18px; stroke: var(--accent-blue); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .modal-header .ip-badge { color: var(--accent-blue); font-family: 'SF Mono', 'Cascadia Code', Consolas, monospace; font-size: 1.05em; margin-top: 4px; font-weight: 500; }
+        .modal-close { background: none; border: 1px solid var(--border); color: var(--text-muted); font-size: 1.2em; cursor: pointer; border-radius: 8px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; transition: background 0.15s, color 0.15s; }
+        .modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .modal-body { padding: 24px 28px; }
+        .modal-section { margin-bottom: 22px; }
+        .modal-section:last-child { margin-bottom: 0; }
+        .modal-section h3 { font-size: 0.72em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); font-weight: 600; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+        .detail-item { display: flex; flex-direction: column; gap: 3px; }
+        .detail-item .dl { font-size: 0.65em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+        .detail-item .dv { font-size: 0.88em; color: var(--text-primary); }
+        .detail-item .dv.mono { font-family: 'SF Mono', 'Cascadia Code', Consolas, monospace; font-size: 0.82em; }
+
+        /* Threat badges */
+        .threat-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 8px; font-size: 0.82em; font-weight: 600; }
+        .threat-malicious { background: var(--accent-red-dim); color: var(--accent-red); }
+        .threat-suspicious { background: var(--accent-yellow-dim); color: var(--accent-yellow); }
+        .threat-benign { background: var(--accent-green-dim); color: var(--accent-green); }
+        .threat-unknown { background: var(--bg-primary); color: var(--text-muted); border: 1px solid var(--border); }
+        .threat-dot { width: 7px; height: 7px; border-radius: 50%; }
+        .threat-dot-malicious { background: var(--accent-red); }
+        .threat-dot-suspicious { background: var(--accent-yellow); }
+        .threat-dot-benign { background: var(--accent-green); }
+        .threat-dot-unknown { background: var(--text-muted); }
+        .local-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 8px; font-size: 0.82em; font-weight: 600; }
+        .local-banned { background: var(--accent-red-dim); color: var(--accent-red); }
+        .local-attacker { background: var(--accent-yellow-dim); color: var(--accent-yellow); }
+        .local-clean { background: var(--accent-green-dim); color: var(--accent-green); }
+        .modal-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .modal-link { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; color: var(--accent-blue); text-decoration: none; font-size: 0.78em; font-weight: 500; transition: background 0.15s, border-color 0.15s; }
+        .modal-link:hover { background: var(--bg-hover); border-color: var(--border-light); }
+        .modal-link svg { width: 13px; height: 13px; stroke: var(--accent-blue); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .loading-spinner { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--text-muted); gap: 12px; }
+        .spinner { border: 3px solid var(--border); border-top: 3px solid var(--accent-blue); border-radius: 50%; width: 22px; height: 22px; animation: spin 0.8s linear infinite; }
+        .error-msg { color: var(--accent-red); font-size: 0.85em; }
+        .map-link { color: var(--accent-blue); text-decoration: none; font-size: 0.85em; }
+        .map-link:hover { text-decoration: underline; }
+        .footer { text-align: center; color: var(--text-muted); font-size: 0.78em; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); opacity: 0.7; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .stat-card { padding: 14px; }
+            .stat-card .value { font-size: 1.6em; }
+            .two-col { grid-template-columns: 1fr; }
+            .bar-row .bar-label { width: 100px; font-size: 0.78em; }
+            .detail-grid { grid-template-columns: 1fr; }
+            .modal-card { margin: 10px; border-radius: 14px; }
+            .header { flex-direction: column; align-items: flex-start; }
+            .header-meta { text-align: left; }
+            .search-bar { flex-direction: column; align-items: stretch; }
+            .search-input { max-width: 100%; }
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="header">
+    <div class="header-left">
+        <div class="header-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div>
+            <h1>Fail2Ban Dashboard</h1>
+            <div class="subtitle">jlaiii -- SSH Intrusion Monitor</div>
+        </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+            <svg id="themeIcon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span id="themeLabel">Light</span>
+        </button>
+        <div class="header-meta">
+            <div>Data refreshed <span class="fresh" id="dataAge">{{ data_age }}</span></div>
+            <div>Page: {{ now_str }}</div>
+            <div><span class="status-dot"></span>Auto-refresh 30s</div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="search-bar">
+    <div class="search-icon" style="flex:1;max-width:500px;">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" id="searchInput" type="text" placeholder="Filter by IP, username, or time...">
+    </div>
+    <span class="search-hint" id="searchHint"></span>
+    <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none;">Clear</button>
+</div>
+
+<!-- Top Stats Cards -->
+<div class="stats-grid" id="statsGrid">
+    <div class="stat-card stat-danger">
+        <div class="value" id="statBanned">{{ banned_ips|length }}</div>
+        <div class="label">Currently Banned</div>
+        <div class="sub">active bans right now</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="value" id="statAttacksHr">{{ enriched.attacks_per_hour|default(0) }}</div>
+        <div class="label">Attacks / Hour</div>
+        <div class="sub">last 60 minutes</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="value" id="statAttacks24h">{{ enriched.attacks_per_24h|default(0) }}</div>
+        <div class="label">Attacks / 24h</div>
+        <div class="sub" id="statUniqueIps24h">{{ enriched.unique_ips_24h|default(0) }} unique IPs</div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="value" id="statTotalBans">{{ jail_stats.get('total_banned', 0) }}</div>
+        <div class="label">Total Bans</div>
+        <div class="sub">all time</div>
+    </div>
+    <div class="stat-card stat-purple">
+        <div class="value" id="statUniqueIps">{{ auth_data.ip_counts|length }}</div>
+        <div class="label">Unique IPs</div>
+        <div class="sub">seen in logs</div>
+    </div>
+    <div class="stat-card stat-orange">
+        <div class="value" id="statPeakCount">{{ enriched.peak_count|default(0) }}</div>
+        <div class="label">Peak Hour</div>
+        <div class="sub" id="statPeakHour">{% if enriched.peak_hour %}{{ enriched.peak_hour[-5:] }}{% else %}--{% endif %}</div>
+    </div>
+</div>
+
+<!-- Currently Banned IPs -->
+<div class="section" id="bannedSection">
+    <div class="section-title">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+        Currently Banned IPs
+        <span class="count-badge" id="bannedCount">{{ banned_ips|length }}</span>
+    </div>
+    <div class="section-body">
+        <table id="bannedTable">
+            <tr><th>#</th><th>IP Address</th><th>Expires</th></tr>
+            {% for b in banned_ips_enriched %}
+            <tr data-ip="{{ b.ip }}" data-search="{{ b.ip }}">
+                <td>{{ loop.index }}</td>
+                <td><span class="ip-status-dot dot-red"></span><a class="ip-clickable" onclick="showIpDetail('{{ b.ip }}')">{{ b.ip }}</a><span class="country-flag-wrap" data-cc-ip="{{ b.ip }}"></span></td>
+                <td>{% if b.ban_time and b.bantime %}<span class="ban-countdown" data-ban-time="{{ b.ban_time }}" data-ban-duration="{{ b.bantime }}">--</span>{% else %}<span class="ban-countdown">N/A</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% if not banned_ips_enriched %}
+        <div class="empty-state">No IPs currently banned -- your server is quiet.</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Ban History -->
+<div class="section" id="banHistorySection">
+    <div class="section-title">
+        <svg viewBox="0 0 24 24"><polyline points="12 8 12 12 16 14"/><circle cx="12" cy="12" r="10"/></svg>
+        Ban History
+        <span class="count-badge" id="banHistoryCount">{{ enriched.enriched_bans|length }} records</span>
+    </div>
+    <div class="section-body" style="max-height:400px;overflow-y:auto;">
+        {% if enriched.enriched_bans %}
+        <table id="banHistoryTable">
+            <tr><th>When</th><th>IP Address</th><th>Jail</th><th>Ban Duration</th><th>Count</th></tr>
+            {% for ban in enriched.enriched_bans %}
+            <tr data-ip="{{ ban.ip }}" data-search="{{ ban.ip }} {{ ban.jail }} {{ ban.time_relative }} {{ ban.time }}">
+                <td class="time-col">
+                    <span class="time-main">{{ ban.time_relative }}</span>
+                    <span class="relative-time">{{ ban.time }}</span>
+                </td>
+                <td><a class="ip-clickable" onclick="showIpDetail('{{ ban.ip }}')">{{ ban.ip }}</a><span class="country-flag-wrap" data-cc-ip="{{ ban.ip }}"></span></td>
+                <td>{{ ban.jail }}</td>
+                <td><span class="tag {% if ban.bantime >= 86400 %}tag-danger{% elif ban.bantime >= 3600 %}tag-warning{% else %}tag-info{% endif %}">{{ ban.bantime_human }}</span></td>
+                <td>{{ ban.bancount }}x</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <div class="empty-state">No ban history recorded</div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="two-col">
+    <!-- Top Attacker IPs -->
+    <div class="section" id="topIpsSection">
+        <div class="section-title">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Top Attacker IPs
+            <span class="count-badge" id="topIpsCount">{{ auth_data.ip_counts|length }}</span>
+        </div>
+        <div class="section-body">
+            {% if auth_data.ip_counts %}
+            {% set max_ip = (auth_data.ip_counts.values()|list)|max %}
+            {% for ip, count in (auth_data.ip_counts|dictsort(by="value", reverse=true))[:15] %}
+            <div class="bar-row" data-ip="{{ ip }}" data-search="{{ ip }}">
+                <div class="bar-rank">{{ loop.index }}</div>
+                <div class="bar-label"><a class="ip-clickable" onclick="showIpDetail('{{ ip }}')">{{ ip }}</a><span class="country-flag-wrap" data-cc-ip="{{ ip }}"></span></div>
+                <div class="bar-track"><div class="bar-fill bar-fill-danger" style="width: {{ (count / max_ip * 100)|int }}%;"></div></div>
+                <div class="bar-value">{{ count }}</div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">No attack data available</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Top Targeted Usernames -->
+    <div class="section" id="topUsersSection">
+        <div class="section-title">
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Top Targeted Usernames
+            <span class="count-badge" id="topUsersCount">{{ auth_data.user_counts|length }}</span>
+        </div>
+        <div class="section-body">
+            {% if auth_data.user_counts %}
+            {% set max_user = (auth_data.user_counts.values()|list)|max %}
+            {% for user, count in (auth_data.user_counts|dictsort(by="value", reverse=true))[:10] %}
+            <div class="bar-row" data-search="{{ user }}">
+                <div class="bar-rank">{{ loop.index }}</div>
+                <div class="bar-label"><code>{{ user }}</code></div>
+                <div class="bar-track"><div class="bar-fill bar-fill-warning" style="width: {{ (count / max_user * 100)|int }}%;"></div></div>
+                <div class="bar-value">{{ count }}</div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">No username data available</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Attack Timeline -->
+<div class="section" id="timelineSection">
+    <div class="section-title">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Attack Timeline
+        <span class="count-badge">by hour</span>
+    </div>
+    <div class="section-body">
+        {% if auth_data.timeline %}
+        {% set max_val = auth_data.timeline.values()|max %}
+        <div class="timeline-container">
+            <div class="timeline-bar">
+                {% for hour, count in auth_data.timeline.items() %}
+                <div class="bar-group" title="{{ hour }}: {{ count }} attacks">
+                    <div class="bar" style="height: {{ (count / max_val * 130)|int }}px;"></div>
+                    <div class="bar-label">{{ hour[-5:] }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">No timeline data available</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Attacks -->
+<div class="section" id="recentSection">
+    <div class="section-title">
+        <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Recent Attacks
+        <span class="count-badge" id="recentCount">{{ enriched.enriched_attacks|length }}</span>
+    </div>
+    <div class="section-body" style="max-height:400px;overflow-y:auto;">
+        {% if enriched.enriched_attacks %}
+        <table id="recentTable">
+            <tr><th>When</th><th>Username</th><th>IP Address</th></tr>
+            {% for attack in enriched.enriched_attacks[-50:]|reverse %}
+            <tr data-ip="{{ attack.ip }}" data-search="{{ attack.ip }} {{ attack.user }} {{ attack.time_relative }} {{ attack.time }}">
+                <td class="time-col">
+                    <span class="time-main">{{ attack.time_relative }}</span>
+                    <span class="relative-time">{{ attack.time }}</span>
+                </td>
+                <td><code>{{ attack.user }}</code></td>
+                <td><a class="ip-clickable" onclick="showIpDetail('{{ attack.ip }}')">{{ attack.ip }}</a><span class="country-flag-wrap" data-cc-ip="{{ attack.ip }}"></span></td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% elif auth_data.attacks %}
+        <table id="recentTable">
+            <tr><th>Time</th><th>Username</th><th>IP Address</th></tr>
+            {% for attack in auth_data.attacks[-50:]|reverse %}
+            <tr data-ip="{{ attack.ip }}" data-search="{{ attack.ip }} {{ attack.user }} {{ attack.time }}">
+                <td>{{ attack.time }}</td>
+                <td><code>{{ attack.user }}</code></td>
+                <td><a class="ip-clickable" onclick="showIpDetail('{{ attack.ip }}')">{{ attack.ip }}</a><span class="country-flag-wrap" data-cc-ip="{{ attack.ip }}"></span></td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <div class="empty-state">No recent attacks recorded</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ============ IP DETAIL MODAL ============ -->
+<div class="modal-overlay" id="ipModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div>
+                <h2>
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    IP Intelligence
+                </h2>
+                <div class="ip-badge" id="modalIp"></div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <div class="loading-spinner"><div class="spinner"></div><span>Looking up IP details...</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==================== THEME TOGGLE ====================
+function getStoredTheme() {
+    return localStorage.getItem('f2b-theme') || 'dark';
+}
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    var icon = document.getElementById('themeIcon');
+    var label = document.getElementById('themeLabel');
+    if (theme === 'dark') {
+        icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+        label.textContent = 'Light';
+    } else {
+        icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+        label.textContent = 'Dark';
+    }
+    localStorage.setItem('f2b-theme', theme);
+}
+function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme');
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+// Apply stored theme on load
+applyTheme(getStoredTheme());
+
+// ==================== SEARCH / FILTER ====================
+var searchInput = document.getElementById('searchInput');
+var searchHint = document.getElementById('searchHint');
+var searchClear = document.getElementById('searchClear');
+
+function applyFilter() {
+    var q = searchInput.value.trim().toLowerCase();
+    searchClear.style.display = q ? 'inline-block' : 'none';
+
+    // Collect all filterable rows
+    var rows = document.querySelectorAll('[data-search]');
+    var matchCount = 0;
+    rows.forEach(function(el) {
+        var text = el.getAttribute('data-search') || '';
+        var match = !q || text.toLowerCase().indexOf(q) !== -1;
+        if (match) {
+            el.classList.remove('filter-hidden');
+            matchCount++;
+        } else {
+            el.classList.add('filter-hidden');
+        }
+    });
+    searchHint.textContent = q ? matchCount + ' matches' : '';
+}
+
+searchInput.addEventListener('input', applyFilter);
+function clearSearch() {
+    searchInput.value = '';
+    applyFilter();
+    searchInput.focus();
+}
+
+// ==================== COUNTRY FLAGS ====================
+var geoCache = {};
+var geoLoading = false;
+
+function loadCountryFlags() {
+    // Collect all IPs that need flags
+    var wraps = document.querySelectorAll('.country-flag-wrap[data-cc-ip]');
+    var ips = [];
+    wraps.forEach(function(el) {
+        var ip = el.getAttribute('data-cc-ip');
+        if (ip && !geoCache[ip] && ips.indexOf(ip) === -1) {
+            ips.push(ip);
+        }
+    });
+    if (ips.length === 0) return;
+    if (geoLoading) return;
+    geoLoading = true;
+
+    fetch('/api/geo/batch', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ips: ips})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        // Cache results
+        for (var ip in data) {
+            geoCache[ip] = data[ip];
+        }
+        renderFlags();
+        geoLoading = false;
+    })
+    .catch(function() { geoLoading = false; });
+}
+
+function renderFlags() {
+    var wraps = document.querySelectorAll('.country-flag-wrap[data-cc-ip]');
+    wraps.forEach(function(el) {
+        var ip = el.getAttribute('data-cc-ip');
+        if (!ip || !geoCache[ip] || el.dataset.rendered) return;
+        var cc = geoCache[ip].country_code;
+        if (!cc) return;
+        var lower = cc.toLowerCase();
+        el.innerHTML = '<img class="country-flag" src="https://flagcdn.com/16x12/' + esc(lower) + '.png" alt="" onerror="this.style.display=\'none\'"><span class="country-code">' + esc(cc) + '</span>';
+        el.dataset.rendered = '1';
+    });
+}
+
+// ==================== BAN COUNTDOWNS ====================
+function updateCountdowns() {
+    document.querySelectorAll('.ban-countdown[data-ban-time]').forEach(function(el) {
+        var banTimeStr = el.getAttribute('data-ban-time');
+        var banDuration = parseInt(el.getAttribute('data-ban-duration'), 10);
+        if (!banTimeStr || !banDuration || isNaN(banDuration)) {
+            el.textContent = 'N/A';
+            return;
+        }
+        try {
+            var banTime = new Date(banTimeStr.replace(' ', 'T'));
+            var now = new Date();
+            var elapsed = Math.floor((now - banTime) / 1000);
+            var remaining = banDuration - elapsed;
+            if (remaining <= 0) {
+                el.textContent = 'Expired';
+                el.classList.add('expired');
+            } else {
+                el.textContent = formatDuration(remaining) + ' left';
+                el.classList.remove('expired');
+            }
+        } catch(e) {
+            el.textContent = 'N/A';
+        }
+    });
+}
+// Update countdowns every 10 seconds
+setInterval(updateCountdowns, 10000);
+updateCountdowns();
+
+// ==================== JS AUTO-REFRESH ====================
+var lastRefresh = Date.now();
+
+function refreshData() {
+    fetch('/api/status')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            updateDashboard(d);
+            lastRefresh = Date.now();
+            updateDataAge();
+        })
+        .catch(function() {});
+}
+
+function updateDashboard(d) {
+    // Stats
+    var bannedIps = d.banned_ips || [];
+    document.getElementById('statBanned').textContent = bannedIps.length;
+    document.getElementById('bannedCount').textContent = bannedIps.length;
+
+    var en = d.enriched || {};
+    document.getElementById('statAttacksHr').textContent = en.attacks_per_hour || 0;
+    document.getElementById('statAttacks24h').textContent = en.attacks_per_24h || 0;
+    document.getElementById('statUniqueIps24h').textContent = (en.unique_ips_24h || 0) + ' unique IPs';
+
+    var js = d.jail_stats || {};
+    document.getElementById('statTotalBans').textContent = js.total_banned || 0;
+
+    var ad = d.auth_data || {};
+    document.getElementById('statUniqueIps').textContent = (ad.ip_counts ? Object.keys(ad.ip_counts).length : 0);
+    document.getElementById('statPeakCount').textContent = en.peak_count || 0;
+    document.getElementById('statPeakHour').textContent = en.peak_hour ? en.peak_hour.slice(-5) : '--';
+
+    // Banned IPs table
+    var bannedEnriched = d.banned_ips_enriched || [];
+    var bt = document.getElementById('bannedTable');
+    var bHtml = '<tr><th>#</th><th>IP Address</th><th>Expires</th></tr>';
+    for (var i = 0; i < bannedEnriched.length; i++) {
+        var b = bannedEnriched[i];
+        var banTimeAttr = b.ban_time ? ' data-ban-time="' + esc(b.ban_time) + '" data-ban-duration="' + (b.bantime || '') + '"' : '';
+        var countdownText = b.ban_time && b.bantime ? '--' : 'N/A';
+        bHtml += '<tr data-ip="' + esc(b.ip) + '" data-search="' + esc(b.ip) + '"><td>' + (i+1) + '</td><td><span class="ip-status-dot dot-red"></span><a class="ip-clickable" onclick="showIpDetail(\'' + esc(b.ip) + '\')">' + esc(b.ip) + '</a><span class="country-flag-wrap" data-cc-ip="' + esc(b.ip) + '"></span></td><td><span class="ban-countdown"' + banTimeAttr + '>' + countdownText + '</span></td></tr>';
+    }
+    bt.innerHTML = bHtml;
+
+    // Ban history
+    var bans = en.enriched_bans || [];
+    document.getElementById('banHistoryCount').textContent = bans.length + ' records';
+    var bht = document.getElementById('banHistoryTable');
+    if (bht && bans.length > 0) {
+        var bhHtml = '<tr><th>When</th><th>IP Address</th><th>Jail</th><th>Ban Duration</th><th>Count</th></tr>';
+        for (var i = 0; i < bans.length; i++) {
+            var ban = bans[i];
+            var tagClass = ban.bantime >= 86400 ? 'tag-danger' : ban.bantime >= 3600 ? 'tag-warning' : 'tag-info';
+            bhHtml += '<tr data-ip="' + esc(ban.ip) + '" data-search="' + esc(ban.ip) + ' ' + esc(ban.jail) + ' ' + esc(ban.time_relative) + ' ' + esc(ban.time) + '"><td class="time-col"><span class="time-main">' + esc(ban.time_relative) + '</span><span class="relative-time">' + esc(ban.time) + '</span></td><td><a class="ip-clickable" onclick="showIpDetail(\'' + esc(ban.ip) + '\')">' + esc(ban.ip) + '</a><span class="country-flag-wrap" data-cc-ip="' + esc(ban.ip) + '"></span></td><td>' + esc(ban.jail) + '</td><td><span class="tag ' + tagClass + '">' + esc(ban.bantime_human) + '</span></td><td>' + ban.bancount + 'x</td></tr>';
+        }
+        bht.innerHTML = bhHtml;
+    }
+
+    // Recent attacks
+    var attacks = en.enriched_attacks || [];
+    document.getElementById('recentCount').textContent = attacks.length;
+    var rt = document.getElementById('recentTable');
+    if (rt && attacks.length > 0) {
+        var recent = attacks.slice(-50).reverse();
+        var rHtml = '<tr><th>When</th><th>Username</th><th>IP Address</th></tr>';
+        for (var i = 0; i < recent.length; i++) {
+            var a = recent[i];
+            rHtml += '<tr data-ip="' + esc(a.ip) + '" data-search="' + esc(a.ip) + ' ' + esc(a.user) + ' ' + esc(a.time_relative) + ' ' + esc(a.time) + '"><td class="time-col"><span class="time-main">' + esc(a.time_relative) + '</span><span class="relative-time">' + esc(a.time) + '</span></td><td><code>' + esc(a.user) + '</code></td><td><a class="ip-clickable" onclick="showIpDetail(\'' + esc(a.ip) + '\')">' + esc(a.ip) + '</a><span class="country-flag-wrap" data-cc-ip="' + esc(a.ip) + '"></span></td></tr>';
+        }
+        rt.innerHTML = rHtml;
+    }
+
+    // Re-apply filter and flags
+    applyFilter();
+    loadCountryFlags();
+    updateCountdowns();
+}
+
+function updateDataAge() {
+    var age = Math.floor((Date.now() - lastRefresh) / 1000);
+    var t;
+    if (age < 60) t = age + 's ago';
+    else if (age < 3600) t = Math.floor(age/60) + 'm ago';
+    else t = Math.floor(age/3600) + 'h ago';
+    document.getElementById('dataAge').textContent = t;
+}
+setInterval(updateDataAge, 10000);
+
+// Auto-refresh every 30 seconds
+setInterval(refreshData, 30000);
+
+// ==================== IP DETAIL MODAL ====================
+function showIpDetail(ip) {
+    var modal = document.getElementById('ipModal');
+    var body = document.getElementById('modalBody');
+    var ipBadge = document.getElementById('modalIp');
+    ipBadge.textContent = ip;
+    body.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><span>Looking up IP details...</span></div>';
+    modal.classList.add('active');
+    fetch('/api/ip/' + ip)
+        .then(function(r) { return r.json(); })
+        .then(function(d) { renderIpDetail(d); })
+        .catch(function(e) {
+            body.innerHTML = '<div class="error-msg">Failed to load IP details: ' + esc(e.message) + '</div>';
+        });
+}
+
+function renderIpDetail(d) {
+    var body = document.getElementById('modalBody');
+    var html = '';
+    var ip = d.ip;
+    var geo = d.geo;
+    var threat = d.threat;
+    var local = d.local;
+
+    // Local status
+    html += '<div class="modal-section"><h3>Local Status</h3><div class="detail-grid">';
+    var localBadge = '';
+    if (local.currently_banned) {
+        localBadge = '<span class="local-badge local-banned"><span class="ip-status-dot dot-red"></span>BANNED</span>';
+    } else if (local.attack_count > 0) {
+        localBadge = '<span class="local-badge local-attacker">Attacked ' + local.attack_count + 'x</span>';
+    } else {
+        localBadge = '<span class="local-badge local-clean">No attacks</span>';
+    }
+    html += '<div class="detail-item"><div class="dl">Status</div><div class="dv">' + localBadge + '</div></div>';
+    html += '<div class="detail-item"><div class="dl">Attack Count</div><div class="dv mono">' + local.attack_count + '</div></div>';
+    if (local.ban_info) {
+        html += '<div class="detail-item"><div class="dl">Ban Time</div><div class="dv mono">' + esc(local.ban_info.time || '') + '</div></div>';
+        html += '<div class="detail-item"><div class="dl">Ban Duration</div><div class="dv mono">' + formatDuration(local.ban_info.bantime) + '</div></div>';
+    }
+    html += '</div>';
+    if (local.usernames_tried && local.usernames_tried.length > 0) {
+        html += '<div style="margin-top:10px;font-size:0.78em;color:var(--text-muted);">Usernames tried: ' + local.usernames_tried.map(function(u) { return '<code>' + esc(u) + '</code>'; }).join(', ') + '</div>';
+    }
+    html += '</div>';
+
+    if (geo) {
+        html += '<div class="modal-section"><h3>Geolocation</h3><div class="detail-grid">';
+        if (geo.country) html += '<div class="detail-item"><div class="dl">Country</div><div class="dv">' + esc(geo.country) + (geo.country_code ? ' (' + esc(geo.country_code) + ')' : '') + '</div></div>';
+        if (geo.city) html += '<div class="detail-item"><div class="dl">City</div><div class="dv">' + esc(geo.city) + (geo.region ? ', ' + esc(geo.region) : '') + '</div></div>';
+        if (geo.postal) html += '<div class="detail-item"><div class="dl">Postal</div><div class="dv mono">' + esc(geo.postal) + '</div></div>';
+        if (geo.timezone) html += '<div class="detail-item"><div class="dl">Timezone</div><div class="dv">' + esc(geo.timezone) + (geo.utc_offset ? ' (UTC' + esc(geo.utc_offset) + ')' : '') + '</div></div>';
+        if (geo.latitude != null && geo.longitude != null) {
+            html += '<div class="detail-item"><div class="dl">Coordinates</div><div class="dv mono">' + geo.latitude + ', ' + geo.longitude + ' <a class="map-link" href="https://www.google.com/maps?q=' + geo.latitude + ',' + geo.longitude + '" target="_blank">Map</a></div></div>';
+        }
+        if (geo.isp) html += '<div class="detail-item"><div class="dl">ISP</div><div class="dv">' + esc(geo.isp) + '</div></div>';
+        if (geo.org) html += '<div class="detail-item"><div class="dl">Organization</div><div class="dv">' + esc(geo.org) + '</div></div>';
+        if (geo.asn) html += '<div class="detail-item"><div class="dl">ASN</div><div class="dv mono">' + esc(geo.asn) + '</div></div>';
+        if (geo.network) html += '<div class="detail-item"><div class="dl">Network</div><div class="dv mono">' + esc(geo.network) + '</div></div>';
+        if (geo.in_eu !== null && geo.in_eu !== undefined) html += '<div class="detail-item"><div class="dl">In EU</div><div class="dv">' + (geo.in_eu ? 'Yes' : 'No') + '</div></div>';
+        html += '</div><div style="margin-top:6px;font-size:0.65em;color:var(--text-muted);">Source: ' + esc(geo.source) + '</div></div>';
+    }
+
+    if (threat) {
+        html += '<div class="modal-section"><h3>Threat Intelligence</h3>';
+        var cls = threat.classification || 'unknown';
+        var badgeClass = 'threat-unknown';
+        var dotClass = 'threat-dot-unknown';
+        var badgeText = cls.charAt(0).toUpperCase() + cls.slice(1);
+        if (cls === 'malicious') { badgeClass = 'threat-malicious'; dotClass = 'threat-dot-malicious'; }
+        else if (cls === 'suspicious') { badgeClass = 'threat-suspicious'; dotClass = 'threat-dot-suspicious'; }
+        else if (cls === 'benign') { badgeClass = 'threat-benign'; dotClass = 'threat-dot-benign'; }
+        html += '<div style="margin-bottom:14px;"><span class="threat-badge ' + badgeClass + '"><span class="threat-dot ' + dotClass + '"></span>' + esc(badgeText) + '</span></div>';
+        html += '<div class="detail-grid">';
+        if (threat.noise !== undefined) html += '<div class="detail-item"><div class="dl">Internet Noise</div><div class="dv">' + (threat.noise ? 'Yes' : 'No') + '</div></div>';
+        if (threat.riot !== undefined) html += '<div class="detail-item"><div class="dl">Known Business IP</div><div class="dv">' + (threat.riot ? 'Yes' : 'No') + '</div></div>';
+        if (threat.message) html += '<div class="detail-item"><div class="dl">Notes</div><div class="dv" style="font-size:0.82em;">' + esc(threat.message) + '</div></div>';
+        html += '</div>';
+        if (threat.link) { html += '<div style="margin-top:10px;"><a class="modal-link" href="' + esc(threat.link) + '" target="_blank"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>View on GreyNoise</a></div>'; }
+        html += '<div style="margin-top:6px;font-size:0.65em;color:var(--text-muted);">Source: ' + esc(threat.source) + '</div></div>';
+    }
+
+    html += '<div class="modal-section"><h3>External Lookups</h3><div class="modal-links">';
+    html += '<a class="modal-link" href="https://www.abuseipdb.com/check/' + ip + '" target="_blank"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>AbuseIPDB</a>';
+    html += '<a class="modal-link" href="https://www.virustotal.com/gui/ip-address/' + ip + '" target="_blank"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>VirusTotal</a>';
+    html += '<a class="modal-link" href="https://www.shodan.io/host/' + ip + '" target="_blank"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>Shodan</a>';
+    html += '<a class="modal-link" href="https://search.censys.io/hosts/' + ip + '" target="_blank"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Censys</a>';
+    html += '</div></div>';
+
+    if (d.errors && d.errors.length > 0) { html += '<div style="color:var(--text-muted);font-size:0.72em;margin-top:10px;">API errors: ' + d.errors.join('; ') + '</div>'; }
+    body.innerHTML = html;
+}
+
+function formatDuration(seconds) {
+    if (seconds === null || seconds === undefined) return 'N/A';
+    if (seconds < 0) return 'permanent';
+    if (seconds >= 86400 * 365) return 'permanent';
+    if (seconds >= 86400) { var d = Math.floor(seconds / 86400); var h = Math.floor((seconds % 86400) / 3600); return h > 0 ? d + 'd ' + h + 'h' : d + 'd'; }
+    if (seconds >= 3600) { var h2 = Math.floor(seconds / 3600); var m = Math.floor((seconds % 3600) / 60); return m > 0 ? h2 + 'h ' + m + 'm' : h2 + 'h'; }
+    if (seconds >= 60) return Math.floor(seconds / 60) + 'm';
+    return seconds + 's';
+}
+
+function esc(s) {
+    if (!s) return '';
+    var div = document.createElement('div');
+    div.textContent = String(s);
+    return div.innerHTML;
+}
+
+function closeModal() {
+    document.getElementById('ipModal').classList.remove('active');
+}
+document.getElementById('ipModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+// Initial flag load
+loadCountryFlags();
+</script>
+
+<div class="footer">
+    Fail2Ban Dashboard -- data refreshed every 30 seconds via JS poll -- click any IP for intelligence details
+</div>
+
+</body>
+</html>
