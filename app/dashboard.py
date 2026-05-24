@@ -121,7 +121,9 @@ def fetch_json(url, timeout=5):
 
 
 def _lookup_geo_single(ip):
-    """Look up geo for a single IP, using cache. Returns minimal dict {country_code, country} or None."""
+    """Look up geo for a single IP, using cache. Returns full mapped dict or None.
+    Stores the complete API response in the cache so both the batch flags endpoint
+    and the IP detail modal benefit from the 24h TTL."""
     with _geo_cache_lock:
         if ip in _geo_cache:
             entry = _geo_cache[ip]
@@ -137,13 +139,9 @@ def _lookup_geo_single(ip):
         if raw and (raw.get("status") != "fail"):
             mapped = api["map"](raw)
             if mapped.get("country_code"):
-                result = {
-                    "country_code": mapped["country_code"],
-                    "country": mapped.get("country", ""),
-                }
                 with _geo_cache_lock:
-                    _geo_cache[ip] = {"data": result, "cached_at": time.time()}
-                return result
+                    _geo_cache[ip] = {"data": mapped, "cached_at": time.time()}
+                return mapped
     return None
 
 
@@ -180,20 +178,28 @@ def index():
 
 @app.route("/api/ip/<ip>")
 def ip_lookup(ip):
-    """Proxy endpoint for IP enrichment with fallback chain."""
+    """Proxy endpoint for IP enrichment with fallback chain. Uses in-memory cache."""
     result = {"ip": ip, "geo": None, "threat": None, "errors": []}
 
-    # Geo fallback chain
-    for api in GEO_APIS:
-        url = api["url"].format(ip=ip)
-        raw = fetch_json(url, timeout=api["timeout"])
-        if raw and (raw.get("status") != "fail"):
-            mapped = api["map"](raw)
-            if mapped.get("country") or mapped.get("city"):
-                result["geo"] = mapped
-                break
-        else:
-            result["errors"].append(f"{api['name']}: no response or failed")
+    # Check geo cache first (shared with batch endpoint)
+    geo = _lookup_geo_single(ip)
+    if geo and (geo.get("country") or geo.get("city")):
+        result["geo"] = geo
+    else:
+        # Geo fallback chain (uncached path — only hit on cache miss)
+        for api in GEO_APIS:
+            url = api["url"].format(ip=ip)
+            raw = fetch_json(url, timeout=api["timeout"])
+            if raw and (raw.get("status") != "fail"):
+                mapped = api["map"](raw)
+                if mapped.get("country") or mapped.get("city"):
+                    # Store in cache so subsequent lookups hit
+                    with _geo_cache_lock:
+                        _geo_cache[ip] = {"data": mapped, "cached_at": time.time()}
+                    result["geo"] = mapped
+                    break
+            else:
+                result["errors"].append(f"{api['name']}: no response or failed")
 
     # Threat lookup (best-effort, don't fail if down)
     for api in THREAT_APIS:
@@ -250,9 +256,12 @@ def geo_batch():
     ips = list(dict.fromkeys(ips))[:100]
     result = {}
     for ip in ips:
-        geo = _lookup_geo_single(ip)
-        if geo:
-            result[ip] = geo
+        mapped = _lookup_geo_single(ip)
+        if mapped:
+            result[ip] = {
+                "country_code": mapped.get("country_code", ""),
+                "country": mapped.get("country", ""),
+            }
     return jsonify(result)
 
 

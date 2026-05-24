@@ -677,6 +677,7 @@ updateCountdowns();
 
 // ==================== JS AUTO-REFRESH ====================
 var lastRefresh = Date.now();
+updateDataAge();  // kick immediately, don't wait for first interval
 
 function refreshData() {
     fetch('/api/status')
@@ -768,7 +769,7 @@ function updateDataAge() {
     else t = Math.floor(age/3600) + 'h ago';
     document.getElementById('dataAge').textContent = t;
 }
-setInterval(updateDataAge, 10000);
+setInterval(updateDataAge, 2000);
 
 // Auto-refresh every 30 seconds
 setInterval(refreshData, 30000);
